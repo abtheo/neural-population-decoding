@@ -1,0 +1,6 @@
+data
+\[00LF\] data
+\[01LF\] results
+
+__pycache__
+.venv
