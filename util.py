@@ -447,7 +447,7 @@ class Parameters():
             "save_weight_ims": True,
             "nft_weight_ims": "weights_t{:05d}_{:03d}.jpg",
 
-            "save_weights": False,
+            "save_weights": True,
             "nft_weights": "weights_t{:05d}.npy",
         })
 
