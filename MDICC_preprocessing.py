@@ -13,11 +13,10 @@ if __name__ == "__main__":
     path = root_path + path_extension
     # dirlist = [ item for item in os.listdir(root) if os.path.isdir(os.path.join(root, item)) ]
 
-    # for dir in dirlist:
-    df_survival = pd.read_csv(
-        path+"survival.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
+    # df_survival = pd.read_csv(
+    #     path+"survival.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
     df_label = pd.read_csv(
-        path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
+        root_path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
 
     # for dir in data_files:
     """
@@ -33,10 +32,23 @@ if __name__ == "__main__":
         path+"data\\methyl.csv").rename(columns={'Unnamed: 0': 'METHYL_ID'})
 
     df = pd.concat([df_gene, df_miRNA, df_methyl])
-    # merge multi-omic IDs into single column
+    """ Merge multi-omic IDs into single column """
     df.insert(0, "OMIC_ID", df[["GENE_ID", "miRNA_ID",
                                 "METHYL_ID"]].bfill(axis=1).iloc[:, 0])
     df.drop(labels=["GENE_ID", "miRNA_ID", "METHYL_ID"], axis=1, inplace=True)
+
+    """ 
+        Each column in df has a header corresponding to the PATIENT_ID,
+        and each row is associated with a single omic feature indexed by the OMIC_ID.
+
+        To correlate with the target variable in the column label2 within df_label,
+        we add a row to the end of the multi_omic csv.
+    """
+    # prepend with label for the OMIC_ID column (will be dropped later anyway)
+    target = pd.concat([pd.Series('Target'), df_label['label2']])
+
+    df = df.append(pd.Series(target.values, index=df.columns),
+                   ignore_index=True)
 
     print(df)
     df.to_csv(path + "multi_omic.csv", index=False)
