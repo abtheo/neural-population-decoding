@@ -1,6 +1,7 @@
 data
 \[00LF\] data
 \[01LF\] results
+patient_som_data
 
 __pycache__
 .venv

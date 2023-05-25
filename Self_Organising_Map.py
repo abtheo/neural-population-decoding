@@ -5,6 +5,7 @@ import simpsom as sps
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from mrmr import mrmr_classif
+from tqdm import tqdm
 from sklearn.feature_selection import VarianceThreshold
 
 path = "D:\\Thesis\\MDICC_data\\BRCA\\multi_omic.csv"
@@ -42,47 +43,76 @@ if __name__ == "__main__":
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
 
     # MRMR feature selection
-    selected_features = mrmr_classif(data, target, K=10)
-    old_shape = data.shape
+    K = 10
+    selected_features = mrmr_classif(data, target, K=K)
+    old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
         f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
-    data = data.T
+    data_T = data.T
 
     # applying scaling to make values between some range 0-1/-1-2 ,as need for Kohens SOM
-    scaler = MinMaxScaler(copy=True, feature_range=(0, 1))
-    scaler.fit(data)
-    data = scaler.transform(data)
+    som_scaler = MinMaxScaler(copy=True, feature_range=(0, 1))
+    som_scaler.fit(data_T)
+    data_T = som_scaler.transform(data_T)
 
     # SOM parameters
     ht = 10
     wd = 10
     no_of_epocs = 5
 
-    net = sps.SOMNet(ht, wd, data, PBC=False)
+    # Train Self-Organising Map
+    net = sps.SOMNet(ht, wd, data_T, PBC=False)
     net.colorEx = False
     learning_rate = 0.05
     net.PCI = True  # The weights will be initialised with PCA.
     net.train(start_learning_rate=learning_rate, epochs=no_of_epocs)
 
-    bmu = net.project(data, labels=list(df["OMIC_ID"][selected_features]))
-    G = nx.chvatal_graph()
+    node_positions = net.project(
+        data_T, labels=list(df["OMIC_ID"][selected_features]))
 
-    nx.draw_networkx_nodes(G, bmu,
-                           nodelist=[i for i in range(data.shape[0])],
-                           node_color='w',
-                           edgecolors=[0, 0, 0],
-                           #                       node_color=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],'b','r','c','y','k','m'],
-                           #                       node_color=[[1,1,0],[1,1,0],[1,1,0],[1,1,0],[1,1,0],'b','r','c','y','k','m'],
-                           node_size=1000, alpha=0.8)
+    # G = nx.chvatal_graph()
+    # nx.draw_networkx_nodes(G,
+    #                        node_positions,
+    #                        nodelist=[i for i in range(K)],
+    #                        node_color=[0, 0, 0],
+    #                        edgecolors=[0, 0, 0],
+    #                        node_size=1000,
+    #                        alpha=0.8)
 
-    nx.draw_networkx_labels(
-        G, bmu, labels={k: v for k, v in enumerate(df["OMIC_ID"][selected_features].values)}, font_size=10)
-    plt.axis('on')
-    plt.show()
-    print("EPOCHS  = ", no_of_epocs)
-    print("POS = ", bmu)
+    # nx.draw_networkx_labels(
+    #     G, node_positions, labels={k: v for k, v in enumerate(df["OMIC_ID"][selected_features].values)}, font_size=10)
+    # plt.axis('on')
+    # plt.show()
+    # print("POS = ", node_positions)
 #    plt.savefig('Template.png', bbox_inches='tight', dpi=72)
-    print('***************************DONE!!*****************************')
+
+    # Okay, so the point of all that was to determine the node_positions.
+    # The graph we just drew is only a visual representation of the positions,
+    # but the sizes are an arbitrary constant.
+
+    # Now, using the node_positions, we take each patient
+    # and use their values of the selected_features
+    # to determine the node_sizes.
+    # However, we first need to normalise the *features* into a range.
+    feature_scaler = MinMaxScaler(copy=True, feature_range=(100, 1000))
+    feature_scaler.fit(data)
+    data_norm = feature_scaler.transform(data)
+
+    for i, patient in tqdm(enumerate(data_norm)):
+        # Draw SOM per patient,
+        # encoding their feature expression values as the node_sizes
+        G = nx.chvatal_graph()
+        nx.draw_networkx_nodes(G,
+                               node_positions,
+                               nodelist=[i for i in range(K)],
+                               node_color=[0, 0, 0],
+                               edgecolors=[0, 0, 0],
+                               node_size=patient,
+                               alpha=1, margins=0.5)
+        plt.axis('off')
+        plt.savefig(
+            f'./patient_som_data/BRCA/patient_{df.columns[i+1]}.png', bbox_inches='tight', dpi=36)
+        # plt.show()
