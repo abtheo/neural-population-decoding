@@ -1,34 +1,49 @@
-
 import pandas as pd
 import networkx as nx
 import simpsom as sps
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from mrmr import mrmr_classif
 from tqdm import tqdm
 from sklearn.feature_selection import VarianceThreshold
+from PIL import Image
+import os
+from numpy.lib.type_check import imag
+from tqdm import tqdm
 
-path = "D:\\Thesis\\MDICC_data\\BRCA\\multi_omic.csv"
+
+subtype = "KIRC"
+path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
+
+
+def rgba_to_binary(image_path):
+    # Open the RGBA image
+    rgba_image = Image.open(image_path)
+
+    # Convert the RGBA image to grayscale
+    grayscale_image = rgba_image.convert("L")
+
+    # Convert the grayscale image to binary format (black and white)
+    binary_image = grayscale_image.point(
+        lambda x: 0 if x < 128 else 255, mode='1')
+
+    # Save the binary image
+    # binary_image.save("binary_image.png")
+    return np.array(binary_image)
+
 
 if __name__ == "__main__":
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
     target = df[df['OMIC_ID'] == 'Target'].drop("OMIC_ID", axis=1).T
+    np.save(f"./patient_som_data/{subtype}/target.npy", target)
     """
-        Conduct a Chi-squared test 
-        of the multi-omic features against the target variable of cancer diagnosis.
-        We can then take the top N features to generate the self-organising map.
-
-        OKAY so a Chi-squared test is for the observed frequency of categorical variables,
-        however our features are floating-point numbers.
-        Will have to figure out some other method of selecting the top-20 omic features.
-
         iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%. 
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
 
-        Minimum Redundancy Maximum Relevance (mRMR)
-
+        Then perform Minimum Redundancy Maximum Relevance (mRMR)
     """
     # Transpose data into (patients, features) for feature engineering
     data = df.drop("OMIC_ID", axis=1)[:-1].T
@@ -45,6 +60,8 @@ if __name__ == "__main__":
     # MRMR feature selection
     K = 10
     selected_features = mrmr_classif(data, target, K=K)
+    # selected_features = [9857, 55528, 42604, 37049,
+    #                      2642, 44820, 3320, 14267, 20244, 28642] BRCA
     old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
@@ -87,7 +104,7 @@ if __name__ == "__main__":
     # plt.axis('on')
     # plt.show()
     # print("POS = ", node_positions)
-#    plt.savefig('Template.png', bbox_inches='tight', dpi=72)
+    # plt.savefig('Template.png', bbox_inches='tight', dpi=72)
 
     # Okay, so the point of all that was to determine the node_positions.
     # The graph we just drew is only a visual representation of the positions,
@@ -111,8 +128,33 @@ if __name__ == "__main__":
                                node_color=[0, 0, 0],
                                edgecolors=[0, 0, 0],
                                node_size=patient,
-                               alpha=1, margins=0.5)
+                               alpha=1, margins=0.25)
+
+        # canvas = plt.gcf().canvas
+        # canvas.draw()
+        # img = np.array(canvas.buffer_rgba())
+        # binary_img = (img[:, :, :3] > 0).astype(np.uint8)
+        # ax = plt.imshow(img)
+        # plt.show()
+
+        # out_img = PIL.Image.fromarray(binary_img)
+        # out_img.save('bw_pil.png', bits=1, optimize=True)
+
         plt.axis('off')
         plt.savefig(
-            f'./patient_som_data/BRCA/patient_{df.columns[i+1]}.png', bbox_inches='tight', dpi=36)
+            f'./patient_som_data/{subtype}/patient_{df.columns[i+1]}.png', bbox_inches='tight', dpi=36)
         # plt.show()
+
+    """  Compress .png images into single .npy file """
+    directory_path = f"patient_som_data/{subtype}/"
+    directory = os.listdir(directory_path)
+    output = []
+    for file in directory:
+        if ".npy" in file:
+            continue
+        img = rgba_to_binary(directory_path + file)
+        output.append(img)
+
+    image_array_stack = np.stack(output, axis=0)
+    print(image_array_stack.shape)
+    np.save(f"patient_som_data/{subtype}/SOM_data", image_array_stack)

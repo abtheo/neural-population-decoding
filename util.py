@@ -266,6 +266,9 @@ class Parameters():
             "nf_test_labels": "nf_test_labels.npy",
             "nf_neuron_label_counts": "nf_neuron_label_counts.npy",
             "nf_neuron_image_counts": "nf_neuron_image_counts.npy",
+
+            "s_is": 4,
+            "s_os": 11,
         }
 
     def set_common_custom(self, params_custom, argv):
@@ -579,6 +582,9 @@ class Parameters():
             "e_min_h": None,
 
             "hertz_h": 10/150*1000,
+
+            "s_is": 4,
+            "s_os": 11,
         })
 
         # Adjust the custom parameters according to the arguments in argv

@@ -6,17 +6,17 @@ root_path = "D:\\Thesis\\MDICC_data\\"
 
 if __name__ == "__main__":
     """ 
-        Collect each CSV within the each dataset (start with BRCA)
+        Collect each CSV within the each dataset
         Associate with survival.csv (and label.csv ?) 
     """
-    path_extension = "BRCA\\"
+    path_extension = "LIHC\\"
     path = root_path + path_extension
     # dirlist = [ item for item in os.listdir(root) if os.path.isdir(os.path.join(root, item)) ]
 
     # df_survival = pd.read_csv(
     #     path+"survival.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
     df_label = pd.read_csv(
-        root_path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
+        path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
 
     # for dir in data_files:
     """
@@ -45,7 +45,10 @@ if __name__ == "__main__":
         we add a row to the end of the multi_omic csv.
     """
     # prepend with label for the OMIC_ID column (will be dropped later anyway)
-    target = pd.concat([pd.Series('Target'), df_label['label2']])
+    try:
+        target = pd.concat([pd.Series('Target'), df_label['label2']])
+    except:
+        target = pd.concat([pd.Series('Target'), df_label['class2']])
 
     df = df.append(pd.Series(target.values, index=df.columns),
                    ignore_index=True)
