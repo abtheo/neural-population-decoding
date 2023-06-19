@@ -1,6 +1,5 @@
 
 import pandas as pd
-import numpy as np
 
 root_path = "D:\\Thesis\\MDICC_data\\"
 
@@ -11,14 +10,9 @@ if __name__ == "__main__":
     """
     path_extension = "BRCA\\"
     path = root_path + path_extension
-    # dirlist = [ item for item in os.listdir(root) if os.path.isdir(os.path.join(root, item)) ]
-
-    # df_survival = pd.read_csv(
-    #     path+"survival.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
     df_label = pd.read_csv(
         path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
 
-    # for dir in data_files:
     """
         Each column represents one patient.
         Merge the CSVs vertically, 

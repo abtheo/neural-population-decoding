@@ -1,5 +1,5 @@
-from net_hierarchical import NetworkHierarchical
-from util import Parameters, SHAPE_MNIST_TRAIN, SHAPE_MNIST_TEST
+from net_integration import NetworkIntegration
+from util import Parameters
 from data_handler import DataHandler
 import pickle
 import numpy as np
@@ -28,14 +28,14 @@ def run_hierarchical():
 
     # Set the parameters
     P = Parameters()
-    P.set_hierarchical(argv)
+    P.set_integration(argv)
     S = 10
     P.s_slice = S
     P.topdown_enabled = True
     # P.K_h = 80
 
     # Initialize the hierarchical network
-    network = NetworkHierarchical(P)
+    network = NetworkIntegration(P)
 
     # Initialize the DataHandler
     data_handler = DataHandler(P)
