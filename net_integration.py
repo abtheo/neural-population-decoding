@@ -21,7 +21,7 @@ from net_hierarchical import NetworkHierarchical
 
 class NetworkIntegration(Network):
 
-    def __init__(self, P, P_a, P_b):
+    def __init__(self, P, P_a, P_b, P_c):
         super().__init__(P)
 
         # Number of neurons in the final layer
@@ -33,10 +33,12 @@ class NetworkIntegration(Network):
         # Create the networks to be integrated
         self.net_a = NetworkHierarchical(P_a)
         self.net_b = NetworkHierarchical(P_b)
+        self.net_c = NetworkHierarchical(P_c)
 
         # Keep the parameters of networks a and b
         self.P_a = P_a
         self.P_b = P_b
+        self.P_c = P_c
 
         # Create the final layer, which consists of a single WTA circuit
         self.layer = WTALayer(1, 1, self.K, P.ms)
@@ -44,7 +46,8 @@ class NetworkIntegration(Network):
         # Set the weights from the two hierarchical networks to the final layer
         # If weights are not loaded ...
         if not self.load_weights_f(P.pf_pretrained_weights):
-            self.weights = self.initialize_weights((2, self.K, self.net_a.K_o))
+            self.weights = self.initialize_weights(
+                (3, self.K, self.net_a.K_o))  # was 2?
 
         # Used to keep track of the number of spikes per neurons since the new input image
         self.n_spikes_since_reset = np.zeros(self.K, dtype=np.uint16)
@@ -60,7 +63,7 @@ class NetworkIntegration(Network):
 
         if self.topdown_enabled:
             self.weights_td = self.initialize_weights(
-                (2, self.net_a.K_o, self.K))
+                (3, self.net_a.K_o, self.K))  # was 2?
             self.weights_td = self.weights_td - self.log_c/1.2
 
     def load_weights_f(self, pf_pretrained_weights):
@@ -75,13 +78,15 @@ class NetworkIntegration(Network):
             return True
         return False
 
-    def propagate(self, spike_times_a, spike_times_b, t):
+    def propagate(self, spike_times_a, spike_times_b, spike_times_c, t):
 
         # Propagate through the two to-be-integrated networks
         ks_o_a = self.net_a.propagate(
             spike_times_a, t, learn_h=self.net_a.learn_h, learn_o=self.net_a.learn_o)
         ks_o_b = self.net_b.propagate(
             spike_times_b, t, learn_h=self.net_b.learn_h, learn_o=self.net_b.learn_o)
+        ks_o_c = self.net_c.propagate(
+            spike_times_c, t, learn_h=self.net_c.learn_h, learn_o=self.net_c.learn_o)
 
         if self.topdown_enabled:
             if self.net_a.learn_o:
@@ -101,6 +106,10 @@ class NetworkIntegration(Network):
         for k_o_b in ks_o_b:
             self.layer.excitation[0,
                                   0] += self.weights[1, :, k_o_b] + self.log_c
+        for k_o_c in ks_o_c:
+            self.layer.excitation[0,
+                                  0] += self.weights[2, :, k_o_c] + self.log_c
+
         if not self.softmax_probabilities:  # Limit the membrane potential of neurons
             self.layer.excitation[0,
                                   0] -= self.inhibitor.get_control(ks_o_a.size+ks_o_b.size)
@@ -146,12 +155,26 @@ class NetworkIntegration(Network):
                                                   0] += excitation - inhibition
                     self.net_b.layer_o.excitation = np.clip(
                         self.net_b.layer_o.excitation, 0, -self.net_b.e_min_o)
+                if not self.net_c.t_last_spike == t:
+                    excitation = self.weights_td[2, :, k] + self.log_c
+                    if not isinstance(self.td_curve, type(None)):
+                        curve_index = min(
+                            self.n_spikes_since_reset[k]-1, len(self.td_curve)-1)
+                        excitation = excitation * self.td_curve[curve_index]
+                    inhibition = 0 if self.softmax_probabilities else self.net_c.inhibitor.get_control(
+                        1)
+                    self.net_c.layer_o.excitation[0,
+                                                  0] += excitation - inhibition
+                    self.net_c.layer_o.excitation = np.clip(
+                        self.net_c.layer_o.excitation, 0, -self.net_c.e_min_o)
 
             if self.learn:  # Update the incoming connections weights of neuron <k>
                 self.stdp(self.net_a.layer_o, self.layer,
                           self.weights[0, k], t, k)
                 self.stdp(self.net_b.layer_o, self.layer,
                           self.weights[1, k], t, k)
+                self.stdp(self.net_c.layer_o, self.layer,
+                          self.weights[2, k], t, k)
                 self.weights = np.clip(self.weights, -self.log_c, self.w_max)
 
         if n_spikes > 0:  # Update information and inhibit the layer
@@ -164,6 +187,7 @@ class NetworkIntegration(Network):
         """ Reset the input and output layer. """
         self.net_a.reset()
         self.net_b.reset()
+        self.net_c.reset()
         self.layer.reset()
         self.t_last_spike = 0
 
