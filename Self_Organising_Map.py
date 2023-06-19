@@ -13,7 +13,7 @@ from numpy.lib.type_check import imag
 from tqdm import tqdm
 
 
-subtype = "KIRC"
+subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
 
 

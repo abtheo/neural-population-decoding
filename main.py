@@ -7,6 +7,8 @@ from tqdm import tqdm
 import time
 from sklearn.model_selection import train_test_split
 
+subtype = "BRCA"
+
 
 def store_spikes(X, data_handler, train=True):
     for i in range(0, X.shape[0], data_handler.s_slice):
@@ -17,15 +19,11 @@ def store_spikes(X, data_handler, train=True):
         X_spikes = data_handler.pixels_to_spikes(
             X_slice)  # shape (100,28,28,2,150)
 
-        with open(f'./data/spikes/X_spikes_{"train" if train else "test"}_{i}.pkl', 'wb') as f:
+        with open(f'./data/spikes/{subtype}/X_spikes_{"train" if train else "test"}_{i}.pkl', 'wb') as f:
             pickle.dump(X_spikes, f)
 
-        # For some reason there's an extra dimension here to denote a boolean...
-        # but it's always False in the second slice?
-        # then it's split into 150 values, because it's 150hz frequency I guess
 
-
-def run_hierarchical(train=True):
+def run_hierarchical():
     argv = []
 
     # Set the parameters
@@ -33,19 +31,19 @@ def run_hierarchical(train=True):
     P.set_hierarchical(argv)
     S = 10
     P.s_slice = S
+    P.topdown_enabled = True
     # P.K_h = 80
+
     # Initialize the hierarchical network
     network = NetworkHierarchical(P)
 
     # Initialize the DataHandler
     data_handler = DataHandler(P)
 
-    # with open('./data/mnist.pkl', 'rb') as f:
-    #     X_train, labels_train, X_test, labels_test = pickle.load(f)
-    with open('./patient_som_data/BRCA/SOM_data.npy', 'rb') as f:
+    with open(f'./patient_som_data/{subtype}/SOM_data.npy', 'rb') as f:
         X = np.load(f)
 
-    with open('./patient_som_data/BRCA/target.npy', 'rb') as f:
+    with open(f'./patient_som_data/{subtype}/target.npy', 'rb') as f:
         targets = np.load(f)
 
     # PREP DATA
@@ -53,19 +51,19 @@ def run_hierarchical(train=True):
     X_train, X_test, labels_train, labels_test = train_test_split(
         X, targets, test_size=0.2, random_state=42)
     labels_test = [int(x) for x in labels_test]
-    # X = X_test
+
     # Store the data in slices of size <self.s_slice>
-    # store_spikes(X_train, data_handler)
-    # store_spikes(X_test, data_handler, train=False)
+    store_spikes(X_train, data_handler)
+    store_spikes(X_test, data_handler, train=False)
 
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
     time_start = time.time()
     # SHAPE_MNIST_TRAIN[0]//data_handler.s_slice
-    for ith_slice in tqdm(range(0, 26)):
+    for ith_slice in tqdm(range(0, X_train.shape[0]//S)):
 
         # Retrieve slice <ith_slice> of the spike data
-        with open(f'./data/spikes/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
+        with open(f'./data/spikes/{subtype}/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
             spike_data = pickle.load(f)
 
         for index_im, spike_times in enumerate(spike_data):
@@ -111,7 +109,7 @@ def run_hierarchical(train=True):
     for ith_slice in range(0, X_test.shape[0]//data_handler.s_slice):
 
         # Retrieve slice <ith_slice> of the spike data
-        with open(f'./data/spikes/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
+        with open(f'./data/spikes/{subtype}/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
             spike_data = pickle.load(f)
 
         for index_im, spike_times in enumerate(spike_data):

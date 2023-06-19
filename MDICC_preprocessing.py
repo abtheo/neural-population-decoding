@@ -9,7 +9,7 @@ if __name__ == "__main__":
         Collect each CSV within the each dataset
         Associate with survival.csv (and label.csv ?) 
     """
-    path_extension = "LIHC\\"
+    path_extension = "BRCA\\"
     path = root_path + path_extension
     # dirlist = [ item for item in os.listdir(root) if os.path.isdir(os.path.join(root, item)) ]
 
