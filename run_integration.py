@@ -25,17 +25,22 @@ def store_spikes(X, data_handler, train=True):
 
 def run_hierarchical():
     argv = []
+    S = 10
 
-    # Set the parameters
+    # Set the parameters for Integration network
     P = Parameters()
     P.set_integration(argv)
-    S = 10
     P.s_slice = S
     P.topdown_enabled = True
-    # P.K_h = 80
+
+    # Set the parameters for Hierarchical network
+    P_h = Parameters()
+    P_h.set_hierarchical(argv)
+    P_h.s_slice = S
+    P_h.topdown_enabled = True
 
     # Initialize the hierarchical network
-    network = NetworkIntegration(P)
+    network = NetworkIntegration(P, P_h, P_h, P_h)
 
     # Initialize the DataHandler
     data_handler = DataHandler(P)
@@ -52,6 +57,14 @@ def run_hierarchical():
         X, targets, test_size=0.2, random_state=42)
     labels_test = [int(x) for x in labels_test]
 
+    """
+     So we need to unpack the tuple of omics here,
+     after the split but not passed into the spikes.
+     Actually, we need to parameterize the store_spikes function
+     to take a path for each omic we unpack...
+
+    """
+
     # Store the data in slices of size <self.s_slice>
     store_spikes(X_train, data_handler)
     store_spikes(X_test, data_handler, train=False)
@@ -59,7 +72,6 @@ def run_hierarchical():
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
     time_start = time.time()
-    # SHAPE_MNIST_TRAIN[0]//data_handler.s_slice
     for ith_slice in tqdm(range(0, X_train.shape[0]//S)):
 
         # Retrieve slice <ith_slice> of the spike data
@@ -70,10 +82,6 @@ def run_hierarchical():
             # Convert the flat <spike_times> to a tiled array
             spike_times = network.tile_input(
                 spike_times, network.s_os, network.w, network.h)
-
-            # print(f"Spike shape: {spike_times.shape}")
-            # (4, 4, 7, 7, 2, 150)
-            # (neurons, neurons, width, height, channels, time)
 
             # Determine the complete dataset index (rather than that of the slice)
             index_im_all = ith_slice*data_handler.s_slice+index_im
@@ -106,7 +114,7 @@ def run_hierarchical():
     index_im_all = 0
     time_start = time.time()
     # Iterate over the spike data in slices of size <data_handler.s_slice>
-    for ith_slice in range(0, X_test.shape[0]//data_handler.s_slice):
+    for ith_slice in range(0, X_test.shape[0]//S):
 
         # Retrieve slice <ith_slice> of the spike data
         with open(f'./data/spikes/{subtype}/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:

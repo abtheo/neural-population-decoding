@@ -1,5 +1,6 @@
 
 import pandas as pd
+import numpy as np
 
 root_path = "D:\\Thesis\\MDICC_data\\"
 
@@ -42,10 +43,13 @@ if __name__ == "__main__":
         we add a row to the end of the multi_omic csv.
     """
     # prepend with label for the OMIC_ID column (will be dropped later anyway)
+    # add NaNs to target col
     try:
-        target = pd.concat([pd.Series('Target'), df_label['label2']])
+        target = pd.concat(
+            [pd.Series(['Target', np.nan, np.nan, np.nan]), df_label['label2']])
     except:
-        target = pd.concat([pd.Series('Target'), df_label['class2']])
+        target = pd.concat(
+            [pd.Series(['Target', np.nan, np.nan, np.nan]), df_label['class2']])
 
     df = df.append(pd.Series(target.values, index=df.columns),
                    ignore_index=True)
