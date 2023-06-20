@@ -64,10 +64,10 @@ def run_hierarchical():
      to take a path for each omic we unpack...
 
     """
-
-    # Store the data in slices of size <self.s_slice>
-    store_spikes(X_train, data_handler)
-    store_spikes(X_test, data_handler, train=False)
+    for i in range(3):
+        # Store the data in slices of size <self.s_slice>
+        store_spikes(X_train[:, i], data_handler)  # TODO: param for path
+        store_spikes(X_test[:, i], data_handler, train=False)
 
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>

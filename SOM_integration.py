@@ -37,42 +37,45 @@ if __name__ == "__main__":
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
-    target = df[df['OMIC_ID'] == 'Target'].dropna().drop(
-        ["OMIC_ID", "GENE_ID", "miRNA_ID", "METHYL_ID"], axis=1).T
+    # skip first 4 ['Target', nan, nan, nan] because I was lazy in the previous step lol
+    target = df[df['OMIC_ID'] == 'Target'].iloc[:,
+                                                4:].to_numpy(dtype=np.int32).flatten()
+
+    # .to_numpy(dtype=np.int32)[ :, 4:].flatten()
+
+    # .drop(["OMIC_ID", "GENE_ID", "miRNA_ID", "METHYL_ID"], axis=1).T
 
     np.save(f"./patient_som_data_integration/{subtype}/target.npy", target)
     """
-        iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%. 
+        iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%.
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
 
         Then perform Minimum Redundancy Maximum Relevance (mRMR)
     """
+    df.set_index("OMIC_ID", inplace=True)
 
-    for omic in ["GENE_ID", "miRNA_ID", "METHYL_ID"]:
+    omics = ["GENE_ID", "miRNA_ID", "METHYL_ID"]
+    for omic in omics:
         # Extract only data for the current omic
-        data = df[df[omic].notna()]
+        data = df.loc[df[omic] == df.index]
 
         # Transpose data into (patients, features) for feature engineering
-        data = data.drop("OMIC_ID", axis=1)[:-1].T
+        data = data.drop(omics, axis=1)[:-1].T
 
         # Variance thresholding
-        threshold_n = 0.8
+        threshold_n = 0.95 if omic == "METHYL_ID" else 0.8
         sel = VarianceThreshold(threshold=(threshold_n * (1 - threshold_n)))
         sel_var = sel.fit_transform(data)
         old_shape = data.shape
         data = data[data.columns[sel.get_support(indices=True)]]
         print(
-            f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
+            f"Variance thresholding on {omic} reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
 
         # MRMR feature selection
+        data.columns = list(range(data.columns.size))
         K = 10
         selected_features = mrmr_classif(data, target, K=K)
-        # selected_features = [9857, 55528, 42604, 37049,
-        #                      2642, 44820, 3320, 14267, 20244, 28642] BRCA
-        old_shape = data.shape  # just for printing
         data = data[selected_features]
-        print(
-            f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
         # Transpose data back into (features, patients) for Self-Organising Map
         data_T = data.T
@@ -95,7 +98,7 @@ if __name__ == "__main__":
         net.train(start_learning_rate=learning_rate, epochs=no_of_epocs)
 
         node_positions = net.project(
-            data_T, labels=list(df["OMIC_ID"][selected_features]))
+            data_T, labels=list(df.index[selected_features]))
 
         # G = nx.chvatal_graph()
         # nx.draw_networkx_nodes(G,
@@ -157,17 +160,21 @@ if __name__ == "__main__":
             # plt.show()
 
     """  Compress .png images into single .npy file """
-    directory_path = f"patient_som_data_integration/{subtype}/"
-    directory = os.listdir(directory_path)
-    print(directory)
+    directory_path = f"./patient_som_data_integration/{subtype}/"
+    patient_subdirectories = [name for name in os.listdir(directory_path)
+                              if os.path.isdir(os.path.join(directory_path, name))]
+
     # So we still want to stack by patient on the zero-th dimension
-    #
+    # because we train-test-split the data before unpacking
+    # which means we need to bundle all the omics together
     output = []
-    for file in tqdm(directory, desc="Merging .png files..."):
-        if ".npy" in file:
-            continue
-        img = rgba_to_binary(directory_path + file)
-        output.append(img)
+    for patient_subdir in tqdm(patient_subdirectories, desc="Collecting .png files..."):
+        patient_multi_omics = []
+        for omic in omics:
+            full_path = directory_path + patient_subdir + f'/{omic}.png'
+            img = rgba_to_binary(full_path)
+            patient_multi_omics.append(img)
+        output.append(patient_multi_omics)
 
     image_array_stack = np.stack(output, axis=0)
     print(image_array_stack.shape)
