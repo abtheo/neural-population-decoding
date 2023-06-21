@@ -112,7 +112,7 @@ class NetworkIntegration(Network):
 
         if not self.softmax_probabilities:  # Limit the membrane potential of neurons
             self.layer.excitation[0,
-                                  0] -= self.inhibitor.get_control(ks_o_a.size+ks_o_b.size)
+                                  0] -= self.inhibitor.get_control(ks_o_a.size+ks_o_b.size+ks_o_c.size)
             self.layer.excitation[0, 0] = np.clip(
                 self.layer.excitation[0, 0], 0, -self.e_min_o)
 
