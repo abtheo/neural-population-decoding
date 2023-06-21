@@ -78,15 +78,15 @@ class NetworkIntegration(Network):
             return True
         return False
 
-    def propagate(self, spike_times_a, spike_times_b, spike_times_c, t):
+    def propagate(self, spike_times_a, spike_times_b, spike_times_c, t, learn_h=True, learn_o=True):
 
         # Propagate through the two to-be-integrated networks
         ks_o_a = self.net_a.propagate(
-            spike_times_a, t, learn_h=self.net_a.learn_h, learn_o=self.net_a.learn_o)
+            spike_times_a, t, learn_h=learn_h, learn_o=learn_o)
         ks_o_b = self.net_b.propagate(
-            spike_times_b, t, learn_h=self.net_b.learn_h, learn_o=self.net_b.learn_o)
+            spike_times_b, t, learn_h=learn_h, learn_o=learn_o)
         ks_o_c = self.net_c.propagate(
-            spike_times_c, t, learn_h=self.net_c.learn_h, learn_o=self.net_c.learn_o)
+            spike_times_c, t, learn_h=learn_h, learn_o=learn_o)
 
         if self.topdown_enabled:
             if self.net_a.learn_o:
@@ -97,6 +97,10 @@ class NetworkIntegration(Network):
                 for k_o_b in ks_o_b:
                     self.net_b.stdp(self.layer, self.net_b.layer_o,
                                     self.weights_td[1, k_o_b], t, k_o_b, self.topdown_stdp_mult)
+            if self.net_c.learn_o:
+                for k_o_c in ks_o_c:
+                    self.net_b.stdp(self.layer, self.net_c.layer_o,
+                                    self.weights_td[2, k_o_c], t, k_o_c, self.topdown_stdp_mult)
             self.weights_td = np.clip(self.weights_td, -self.log_c, self.w_max)
 
         # Update the excitation in the final layer if neurons in the previous layers fired

@@ -14,16 +14,15 @@ def store_spikes(X, data_handler, path):
     for i in range(0, X.shape[0], data_handler.s_slice):
         slice_start = i
         slice_end = slice_start + data_handler.s_slice
-        # takes the first S images from MNIST
-        X_slice = X[slice_start:slice_end]  # shape (100,28,28)
+        X_slice = X[slice_start:slice_end]
         X_spikes = data_handler.pixels_to_spikes(
-            X_slice)  # shape (100,28,28,2,150)
+            X_slice)
 
         with open(path+f'_{i}.pkl', 'wb') as f:
             pickle.dump(X_spikes, f)
 
 
-def run_hierarchical():
+def run_integration():
     argv = []
     S = 10
 
@@ -45,10 +44,10 @@ def run_hierarchical():
     # Initialize the DataHandler
     data_handler = DataHandler(P)
 
-    with open(f'./patient_som_data/{subtype}/SOM_data.npy', 'rb') as f:
+    with open(f'./patient_som_data_integration/{subtype}/SOM_data.npy', 'rb') as f:
         X = np.load(f)
 
-    with open(f'./patient_som_data/{subtype}/target.npy', 'rb') as f:
+    with open(f'./patient_som_data_integration/{subtype}/target.npy', 'rb') as f:
         targets = np.load(f)
 
     # PREP DATA
@@ -67,13 +66,15 @@ def run_hierarchical():
     we do need to split the data per Hierarchical network we're training within the I-Net
 
     """
-    for i, omic in enumerate(["gene", "miRNA", "methyl"]):
-        # Store the data in slices of size <self.s_slice>
-        path_train = f'./data/spikes/{subtype}/{omic}/X_spikes_train'
-        path_test = f'./data/spikes/{subtype}/{omic}/X_spikes_test'
-        store_spikes(X_train[:, i], data_handler,
-                     path_train)
-        store_spikes(X_test[:, i], data_handler, path_test)
+    # STORE SPIKES (only needs to run once):
+
+    # for i, omic in enumerate(["gene", "miRNA", "methyl"]):
+    #     # Store the data in slices of size <self.s_slice>
+    #     path_train = f'./data/spikes_integration/{subtype}/{omic}/X_spikes_train'
+    #     path_test = f'./data/spikes_integration/{subtype}/{omic}/X_spikes_test'
+    #     store_spikes(X_train[:, i], data_handler,
+    #                  path_train)
+    #     store_spikes(X_test[:, i], data_handler, path_test)
 
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
@@ -81,11 +82,11 @@ def run_hierarchical():
     for ith_slice in tqdm(range(0, X_train.shape[0]//S)):
 
         # Retrieve slice <ith_slice> of the spike data
-        with open(f'./data/spikes/{subtype}/gene/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
+        with open(f'./data/spikes_integration/{subtype}/gene/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
             spike_data_a = pickle.load(f)
-        with open(f'./data/spikes/{subtype}/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
+        with open(f'./data/spikes_integration/{subtype}/miRNA/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
             spike_data_b = pickle.load(f)
-        with open(f'./data/spikes/{subtype}/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
+        with open(f'./data/spikes_integration/{subtype}/methyl/X_spikes_train_{ith_slice*S}.pkl', 'rb') as f:
             spike_data_c = pickle.load(f)
 
         for index_im, (spike_times_a, spike_times_b, spike_times_c) in enumerate(zip(spike_data_a, spike_data_b, spike_data_c)):
@@ -110,8 +111,12 @@ def run_hierarchical():
             network.reset()  # Reset the network between images
 
             # Print, plot, and save data according to the given parameters
-            time_start = network.print_plot_save(
-                data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
+            network.net_a.print_plot_save(
+                data_handler, X_train[:, 0], labels_train, index_im_all, X_train.shape[0], P_h, time_start)
+            network.net_b.print_plot_save(
+                data_handler, X_train[:, 1], labels_train, index_im_all, X_train.shape[0], P_h, time_start)
+            network.net_c.print_plot_save(
+                data_handler, X_train[:, 2], labels_train, index_im_all, X_train.shape[0], P_h, time_start)
 
             # Reset spike counters
             network.net_a.n_spikes_since_reset_h = np.zeros(
@@ -132,10 +137,10 @@ def run_hierarchical():
     # TESTING
 
     # The number of times each neuron spiked for each label
-    neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
+    neuron_label_counts = np.zeros((network.K, 2), dtype=np.uint32)
 
     # For each image the number of times each neuron spiked
-    neuron_image_counts = np.zeros((X_test.shape[0], network.K_o))
+    neuron_image_counts = np.zeros((X_test.shape[0], network.K))
 
     index_im_all = 0
     time_start = time.time()
@@ -143,14 +148,22 @@ def run_hierarchical():
     for ith_slice in range(0, X_test.shape[0]//S):
 
         # Retrieve slice <ith_slice> of the spike data
-        with open(f'./data/spikes/{subtype}/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
-            spike_data = pickle.load(f)
+        with open(f'./data/spikes_integration/{subtype}/gene/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
+            spike_data_a = pickle.load(f)
+        with open(f'./data/spikes_integration/{subtype}/miRNA/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
+            spike_data_b = pickle.load(f)
+        with open(f'./data/spikes_integration/{subtype}/methyl/X_spikes_test_{ith_slice*S}.pkl', 'rb') as f:
+            spike_data_c = pickle.load(f)
 
-        for index_im, spike_times in enumerate(spike_data):
+        for index_im, (spike_times_a, spike_times_b, spike_times_c) in enumerate(zip(spike_data_a, spike_data_b, spike_data_c)):
 
             # Convert the flat <spike_times> to a tiled array
-            spike_times = network.tile_input(
-                spike_times, network.s_os, network.w, network.h)
+            spike_times_a = network.net_a.tile_input(
+                spike_times_a, network.net_a.s_os, network.net_a.w, network.net_a.h)
+            spike_times_b = network.net_b.tile_input(
+                spike_times_b, network.net_b.s_os, network.net_b.w, network.net_b.h)
+            spike_times_c = network.net_c.tile_input(
+                spike_times_c, network.net_c.s_os, network.net_c.w, network.net_c.h)
 
             # Determine the complete dataset index (rather than that of the slice)
             index_im_all = ith_slice*data_handler.s_slice+index_im
@@ -163,16 +176,20 @@ def run_hierarchical():
             # Propogate through the network according to the current timestep and given spike times
             for t in range(data_handler.ms):
                 network.propagate(
-                    spike_times, t, learn_h=False, learn_o=False)
+                    spike_times_a, spike_times_b, spike_times_c, t, learn_h=False, learn_o=False)
             network.reset()  # Reset the network between images
 
             # Keep track of the results
-            neuron_label_counts[:, label] += network.n_spikes_since_reset_o
-            neuron_image_counts[index_im_all] = network.n_spikes_since_reset_o
+            neuron_label_counts[:, label] += network.n_spikes_since_reset  # _o
+            neuron_image_counts[index_im_all] = network.n_spikes_since_reset
 
             # Print, plot, and save data according to the given parameters
-            time_start = network.print_plot_save(
-                data_handler, X_test, labels_test, index_im_all, X_test.shape[0], P, time_start)
+            network.net_a.print_plot_save(
+                data_handler, X_test[:, 0], labels_test, index_im_all, X_test.shape[0], P_h, time_start)
+            network.net_b.print_plot_save(
+                data_handler, X_test[:, 1], labels_test, index_im_all, X_test.shape[0], P_h, time_start)
+            network.net_c.print_plot_save(
+                data_handler, X_test[:, 2], labels_test, index_im_all, X_test.shape[0], P_h, time_start)
 
             # Evaluate results after every <evaluation_interval> images
             if index_im_all > 0 and index_im_all % 10 == 0:
@@ -199,4 +216,4 @@ def run_hierarchical():
 
 
 if __name__ == "__main__":
-    run_hierarchical()
+    run_integration()

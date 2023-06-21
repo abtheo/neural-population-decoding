@@ -14,10 +14,9 @@ def store_spikes(X, data_handler, train=True):
     for i in range(0, X.shape[0], data_handler.s_slice):
         slice_start = i
         slice_end = slice_start + data_handler.s_slice
-        # takes the first S images from MNIST
-        X_slice = X[slice_start:slice_end]  # shape (100,28,28)
+        X_slice = X[slice_start:slice_end]
         X_spikes = data_handler.pixels_to_spikes(
-            X_slice)  # shape (100,28,28,2,150)
+            X_slice)
 
         with open(f'./data/spikes/{subtype}/X_spikes_{"train" if train else "test"}_{i}.pkl', 'wb') as f:
             pickle.dump(X_spikes, f)
@@ -86,7 +85,7 @@ def run_hierarchical():
             network.reset()  # Reset the network between images
 
             # Print, plot, and save data according to the given parameters
-            time_start = network.print_plot_save(
+            network.print_plot_save(
                 data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
 
             # Reset spike counters
