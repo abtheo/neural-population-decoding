@@ -58,7 +58,6 @@ def run_hierarchical():
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
     time_start = time.time()
-    # SHAPE_MNIST_TRAIN[0]//data_handler.s_slice
     for ith_slice in tqdm(range(0, X_train.shape[0]//S)):
 
         # Retrieve slice <ith_slice> of the spike data
@@ -85,8 +84,8 @@ def run_hierarchical():
             network.reset()  # Reset the network between images
 
             # Print, plot, and save data according to the given parameters
-            network.print_plot_save(
-                data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
+            # network.print_plot_save(
+            #     data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
 
             # Reset spike counters
             network.n_spikes_since_reset_h = np.zeros(
@@ -136,21 +135,27 @@ def run_hierarchical():
             neuron_image_counts[index_im_all] = network.n_spikes_since_reset_o
 
             # Print, plot, and save data according to the given parameters
-            time_start = network.print_plot_save(
-                data_handler, X_test, labels_test, index_im_all, X_test.shape[0], P, time_start)
+            # time_start = network.print_plot_save(
+            #     data_handler, X_test, labels_test, index_im_all, X_test.shape[0], P, time_start)
 
             # Evaluate results after every <evaluation_interval> images
             if index_im_all > 0 and index_im_all % 10 == 0:
                 print("\nEvaluating results after {} images:".format(
                     index_im_all))
-                network.evaluate_results(data_handler, neuron_label_counts[:, :index_im_all+1],
-                                         neuron_image_counts[:index_im_all+1], labels_test[:index_im_all+1])
+                results_df = network.evaluate_results(data_handler, neuron_label_counts[:, :index_im_all+1],
+                                                      neuron_image_counts[:index_im_all+1], labels_test[:index_im_all+1])
+                print(results_df)
 
             # Reset spike counters
             network.n_spikes_since_reset_h = np.zeros(
                 (network.s_os, network.s_os, network.K_h), dtype=np.uint16)
             network.n_spikes_since_reset_o = np.zeros(
                 network.K_o, dtype=np.uint16)
+
+    results_df = network.evaluate_results(data_handler, neuron_label_counts,
+                                          neuron_image_counts, labels_test, plot_cms=True)
+    print(f"Results for fold {0}:")
+    print(results_df)
 
 
 if __name__ == "__main__":

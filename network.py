@@ -5,16 +5,12 @@ __email__ = "otto.vanderhimst@ru.nl"
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-import pickle
-from PIL import Image
-import time
 import os
-import shutil
-import traceback
-import sys
 import util
 from util import save_img, squeeze_all, get_sinewave, get_firing_probability, is_none, normalize
-import gc
+import pandas as pd
+from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics import confusion_matrix
 
 
 class Inhibitor():
@@ -373,6 +369,8 @@ class Network():
         plt.show()
 
     def evaluate_results(self, data_handler, neuron_label_counts, neuron_image_counts, labels, plot_cms=False):
+        # Create dictionary for dataframe results output
+        df_dict = dict()
 
         # Determine for each neuron to which label it most strongly responds
         neuron_label_dict = dict()
@@ -396,6 +394,8 @@ class Network():
         label_spike_counts = [[] for _ in range(classes)]
         cm_classifications = np.zeros((classes, classes), dtype=np.uint32)
         cm_spike_confidence = np.zeros((classes, classes), dtype=np.uint32)
+
+        predictions = []
         for index_im, spike_counts in enumerate(neuron_image_counts):
 
             # Count for each label how often its corresponding neurons spike
@@ -406,6 +406,7 @@ class Network():
 
             # The label for which the most neurons spiked is considered the prediction
             prediction = np.argmax(label_counts)
+            predictions.append(prediction)
             cm_spike_confidence[:, prediction] += label_counts
 
             # Compare the prediction to the true label
@@ -432,7 +433,24 @@ class Network():
             cm_classifications, axis=0) - (normalize(cm_spike_confidence, axis=0))
         stdv = np.std(cm_confidence_error)
 
+        # Calculate evaluation metrics
+        assert len(labels) == len(predictions)
+
         accuracy = 100*cnt_correct/(cnt_correct+cnt_wrong)
+        rai = adjusted_rand_score(labels, predictions)
+        nmi = normalized_mutual_info_score(labels, predictions)
+        CM = confusion_matrix(labels, predictions)
+
+        # Add results to DataFrame
+        df_dict["Count"] = len(predictions)
+        df_dict["Accurary"] = accuracy
+        df_dict["RAI"] = rai
+        df_dict["NMI"] = nmi
+
+        df_dict["True Positive"] = CM[1][1]
+        df_dict["True Negative"] = CM[0][0]
+        df_dict["False Positive"] = CM[0][1]
+        df_dict["False Negative"] = CM[1][0]
 
         results_string = ""
         results_string += "Achieved an accuracy of {:.2f}%".format(
@@ -487,7 +505,9 @@ class Network():
                                        xlabel="Dominant neuron", ylabel="Spike counts",
                                        vmin=-stdv, vmax=stdv, figsize=(10, 7))
 
-        return accuracy, cm_classifications, cm_spike_confidence, cm_confidence_error
+        df = pd.DataFrame.from_dict([df_dict])
+        return df
+
 # =============================================================================
 #         return (results_string, cm_classifications, cm_spike_confidence, cm_confidence_error,
 #                 accuracy, np.mean(label_spike_avg), np.mean(entropies_avg), np.mean(entropies_std),

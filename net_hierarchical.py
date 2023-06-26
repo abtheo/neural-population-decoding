@@ -259,7 +259,7 @@ class NetworkHierarchical(Network):
         for r_o in range(self.s_os):
             for c_o in range(self.s_os):
                 ks_h, n_spikes_h = self.propagate_hidden(
-                    t, r_o, c_o, learn=self.learn_h)
+                    t, r_o, c_o, learn=learn_h)
                 n_spikes_h_total += n_spikes_h
 
         self.weights_ih = np.clip(self.weights_ih, -self.log_c, self.w_max)
@@ -272,7 +272,7 @@ class NetworkHierarchical(Network):
                 self.layer_o.excitation-inhibition, 0, -self.e_min_o)
 
         # Propagate through the output layer
-        ks_o, n_spikes_o = self.propagate_output(t, learn=self.learn_o)
+        ks_o, n_spikes_o = self.propagate_output(t, learn=learn_o)
         self.weights_ho = np.clip(self.weights_ho, -self.log_c, self.w_max)
 
         if not self.softmax_probabilities and self.topdown_enabled:
