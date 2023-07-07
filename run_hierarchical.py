@@ -7,7 +7,7 @@ from tqdm import tqdm
 import time
 from sklearn.model_selection import train_test_split
 
-subtype = "BRCA"
+subtype = "KIRC"
 
 
 def store_spikes(X, data_handler, train=True):
@@ -52,8 +52,8 @@ def run_hierarchical():
     labels_test = [int(x) for x in labels_test]
 
     # Store the data in slices of size <self.s_slice>
-    store_spikes(X_train, data_handler)
-    store_spikes(X_test, data_handler, train=False)
+    # store_spikes(X_train, data_handler)
+    # store_spikes(X_test, data_handler, train=False)
 
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
@@ -94,6 +94,8 @@ def run_hierarchical():
                 network.K_o, dtype=np.uint16)
 
     # TESTING
+    network.print_plot_save(
+        data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
 
     # The number of times each neuron spiked for each label
     neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
@@ -131,7 +133,33 @@ def run_hierarchical():
             network.reset()  # Reset the network between images
 
             # Keep track of the results
-            neuron_label_counts[:, label] += network.n_spikes_since_reset_o
+            """
+                Don't like how the entire list is being updated each iteration,
+                this allows previous predictions to be altered as it runs.
+
+                Hopefully freezing the learning whilst testing fixes this,
+                however it's likely that we'll have to store results
+                one-by-one in a read-only manner.
+
+                AH. So each iteration, we update the label counts for each neuron
+                Whichever label has fired more is the label *of that neuron*
+                But that changes over the run of the test set...
+
+                Well, it makes most sense to count up the entire set THEN evaluate
+                but if KIRC & BRCA both have 0 True Positives then I'm calling it bust
+                in which case, do we reset the counter per slice or what?
+
+                Yeaaah so it's always predicting 0s :))))
+                really weird that we give it the correct label every iteration
+                and then use that number for the result?
+
+                Since we have a severe classs imbalance,
+                over time ALL neurons will tend to 0...
+            """
+            neuron_label_counts[:,
+                                label] += network.n_spikes_since_reset_o  # (99, 2)
+
+            # (65, 99)
             neuron_image_counts[index_im_all] = network.n_spikes_since_reset_o
 
             # Print, plot, and save data according to the given parameters
@@ -142,7 +170,7 @@ def run_hierarchical():
             if index_im_all > 0 and index_im_all % 10 == 0:
                 print("\nEvaluating results after {} images:".format(
                     index_im_all))
-                results_df = network.evaluate_results(data_handler, neuron_label_counts[:, :index_im_all+1],
+                results_df = network.evaluate_results(data_handler, neuron_label_counts,
                                                       neuron_image_counts[:index_im_all+1], labels_test[:index_im_all+1])
                 print(results_df)
 

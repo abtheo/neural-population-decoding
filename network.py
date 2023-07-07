@@ -439,7 +439,8 @@ class Network():
         accuracy = 100*cnt_correct/(cnt_correct+cnt_wrong)
         rai = adjusted_rand_score(labels, predictions)
         nmi = normalized_mutual_info_score(labels, predictions)
-        CM = confusion_matrix(labels, predictions)
+        CM = confusion_matrix(labels, predictions, labels=[
+                              i for i in range(classes)])
 
         # Add results to DataFrame
         df_dict["Count"] = len(predictions)
