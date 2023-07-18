@@ -101,9 +101,19 @@ class DataHandler():
 
         # Let either the black or white neuron be active, according to the input
         pixel_data = self.binarize_pixels(pixel_data).flatten()
+        # Reshapes the data we just generated ourselves... mkay...
         spike_data = spike_data.reshape(-1, spike_data.shape[-1])
-        pixel_data = np.arange(pixel_data.size) * 2 - pixel_data + 1
-        spike_data[pixel_data] *= 0
+        """ 
+            This line makes no sense. 
+            Aranges a [0,1,2..., 257890] array, 
+            multiplies by 2 = [0,2,4..., 515780] (because we flatten the 2 shape from spike_data), 
+            then subtracts a [1,0,1,0,1] binary array, so like [-1, 2, 3]
+            then realises it might be negative so +1 to fix it lol, [0, 3, 4]
+            
+        """
+        pixel_indices = np.arange(pixel_data.size) * 2 - pixel_data + 1
+
+        spike_data[pixel_indices] *= 0
         spike_data = spike_data.reshape(
             (dim_batch, dim_row, dim_col, 2, self.ms))
 
@@ -216,13 +226,13 @@ class DataHandler():
         spike_data = load(pf_mnist_spikes)
         return spike_data
 
-    def inspect_spike_data(self, spike_data, ith_slice, s_slice, tag_mnist, n_inspections=3, train=True):
+    def inspect_spike_data(self, X,  spike_data, ith_slice, s_slice, tag_mnist, n_inspections=3, train=True):
         """ Inspect spike data by converting it to pixels and then plotting it.  """
 
-        if train:
-            X, labels, _, _ = self.load_mnist(tag_mnist)
-        else:
-            _, _, X, labels = self.load_mnist(tag_mnist)
+        # if train:
+        #     X, labels, _, _ = self.load_mnist(tag_mnist)
+        # else:
+        #     _, _, X, labels = self.load_mnist(tag_mnist)
 
         # Select a few random samples to inspect
         indices = self.rng.integers(0, spike_data.shape[0], n_inspections)
@@ -241,5 +251,5 @@ class DataHandler():
                 pixel_data[ith_row], cmap=plt.get_cmap('gray'))
         fig.tight_layout()
         plt.show()
-        print("The images concern the numbers {}.".format(
-            labels[indices+ith_slice*s_slice]))
+        # print("The images concern the numbers {}.".format(
+        #     labels[indices+ith_slice*s_slice]))

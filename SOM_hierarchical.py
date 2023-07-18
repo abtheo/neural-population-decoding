@@ -58,7 +58,7 @@ if __name__ == "__main__":
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
 
     # MRMR feature selection
-    K = 10
+    K = 15
     selected_features = mrmr_classif(data, target, K=K)
     # selected_features = [9857, 55528, 42604, 37049,
     #                      2642, 44820, 3320, 14267, 20244, 28642] BRCA
