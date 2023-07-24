@@ -1,0 +1,13 @@
+BRCA_SMOTE
+
+K_o = 99:
+Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative
+0    122  58.196721  0.018379  0.014115             25             46              25              26
+
+K_o = 2:
+   Count  Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative
+0    122  72.95082  0.203382  0.145493             32             57              14              19
+
+K_o = 20:
+   Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative
+0    122  69.672131  0.147418  0.105098             32             53              18              19

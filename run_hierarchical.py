@@ -33,38 +33,38 @@ def run_hierarchical():
     P.s_slice = S
     P.topdown_enabled = True
     # P.K_h = 80
-    P.K_o = 5000
+    P.K_o = 2
 
-    # Initialize the hierarchical network
+    data_handler = DataHandler(P)
     network = NetworkHierarchical(P)
 
-    # Initialize the DataHandler
-    data_handler = DataHandler(P)
-
-    with open(f'./patient_som_data/{subtype}/SOM_data.npy', 'rb') as f:
+    with open(f'./patient_som_data_smote/{subtype}/SOM_data.npy', 'rb') as f:
         X = np.load(f)
 
-    with open(f'./patient_som_data/{subtype}/target.npy', 'rb') as f:
+    with open(f'./patient_som_data_smote/{subtype}/target.npy', 'rb') as f:
         targets = np.load(f)
+
+    with open(f'./patient_som_data_smote/{subtype}/original.npy', 'rb') as f:
+        original = np.load(f)
 
     # PREP DATA
     # Split into train / test
-    X_train, X_test, labels_train, labels_test = train_test_split(
-        X, targets, test_size=0.2, random_state=42)
+    X_train, X_test, labels_train, labels_test, original_train, original_test = train_test_split(
+        X, targets, original, test_size=0.2, random_state=42)
     labels_train = [int(x) for x in labels_train]
     labels_test = [int(x) for x in labels_test]
+
+    # Remove synthetic / SMOTE examples from the test set.
+    X_test = X_test[original_test]
 
     # Store the data in slices of size <self.s_slice>
     # store_spikes(X_train, data_handler)
     # store_spikes(X_test, data_handler, train=False)
 
-    # # The number of times each neuron spiked for each label
-    # neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
-
     # TRAIN NETWORK
     # Iterate over the spike data in slices of size <data_handler.s_slice>
     time_start = time.time()
-    for epoch in range(1):
+    for epoch in range(2):
 
         # The number of times each neuron spiked for each label
         neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
@@ -121,17 +121,14 @@ def run_hierarchical():
                     network.K_o, dtype=np.uint16)
 
     # TESTING
-    # network.print_plot_save(
-    #     data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
+    network.print_plot_save(
+        data_handler, X_train, labels_train, index_im_all, X_train.shape[0], P, time_start)
 
     index_im_all = 0
     time_start = time.time()
 
     # For each image the number of times each neuron spiked
     neuron_image_counts = np.zeros((X_test.shape[0], network.K_o))
-
-    # The number of times each neuron spiked for each label
-    neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
 
     # Iterate over the spike data in slices of size <data_handler.s_slice>
     for ith_slice in range(0, X_test.shape[0]//data_handler.s_slice):
@@ -157,20 +154,11 @@ def run_hierarchical():
                     spike_times, t, learn_h=False, learn_o=False)
             network.reset()  # Reset the network between images
 
-            # Keep track of the results
-
-            # Retrieve the label of the current image
-            label = labels_test[index_im_all]
-
-            neuron_label_counts[:,
-                                label] += network.n_spikes_since_reset_o  # (99, 2)
-
-            # (65, 99)
             neuron_image_counts[index_im_all] = network.n_spikes_since_reset_o
 
             # Print, plot, and save data according to the given parameters
-            # time_start = network.print_plot_save(
-            #     data_handler, X_test, labels_test, index_im_all, X_test.shape[0], P, time_start)
+            time_start = network.print_plot_save(
+                data_handler, X_test, labels_test, index_im_all, X_test.shape[0], P, time_start)
 
             # Evaluate results after every <evaluation_interval> images
             if index_im_all > 0 and index_im_all % 10 == 0:
