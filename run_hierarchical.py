@@ -32,7 +32,7 @@ def run_hierarchical():
     S = 10
     P.s_slice = S
     P.topdown_enabled = True
-    P.K_h = 128
+    P.K_h = 32
     P.K_o = 2
 
     data_handler = DataHandler(P)

@@ -13,6 +13,7 @@ from numpy.lib.type_check import imag
 from tqdm import tqdm
 from imblearn.over_sampling import SMOTE
 from collections import Counter
+import xgboost as xgb
 
 subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
@@ -59,15 +60,27 @@ if __name__ == "__main__":
     data = data[data.columns[sel.get_support(indices=True)]]
     print(
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
-
+    data.columns = range(data.shape[1])
     # MRMR feature selection
     K = 15
-    selected_features = mrmr_classif(data, target, K=K)
-    print(selected_features)
+    # selected_features = mrmr_classif(data, target, K=K)
+    # [2594, 14561, 11197, 9788, 678, 11790, 855, 3726, 5275, 7583, 13399, 14651, 11359, 14948, 1267]
+
+    # old_shape = data.shape  # just for printing
+    # data = data[selected_features]
+    # print(
+    #     f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+    clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
+                            objective='binary:logistic')
+    clf.fit(data, target)
+    selected_features = (-clf.feature_importances_).argsort()[:K]
+    # print("XGBOOST: ", selected_features)
+    #  [ 2594  1267  2238  2503 12325 13441  6756  4491 10034 11006 11005 11004 0 11002 11001]
+
     old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
-        f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+        f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
     data_T = data.T
@@ -89,8 +102,8 @@ if __name__ == "__main__":
     net.PCI = True  # The weights will be initialised with PCA.
     net.train(start_learning_rate=learning_rate, epochs=no_of_epocs)
 
-    node_positions = net.project(
-        data_T, labels=list(df["OMIC_ID"][selected_features]))
+    node_positions = net.project(data_T)
+    # labels=list(df["OMIC_ID"][selected_features])
 
     # G = nx.chvatal_graph()
     # nx.draw_networkx_nodes(G,
@@ -146,16 +159,6 @@ if __name__ == "__main__":
                                edgecolors=[0, 0, 0],
                                node_size=patient,
                                alpha=1, margins=0.25)
-
-        # canvas = plt.gcf().canvas
-        # canvas.draw()
-        # img = np.array(canvas.buffer_rgba())
-        # binary_img = (img[:, :, :3] > 0).astype(np.uint8)
-        # ax = plt.imshow(img)
-        # plt.show()
-
-        # out_img = PIL.Image.fromarray(binary_img)
-        # out_img.save('bw_pil.png', bits=1, optimize=True)
 
         plt.axis('off')
         plt.savefig(
