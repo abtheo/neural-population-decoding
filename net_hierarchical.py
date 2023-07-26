@@ -262,6 +262,11 @@ class NetworkHierarchical(Network):
                     t, r_o, c_o, learn=learn_h)
                 n_spikes_h_total += n_spikes_h
 
+                if not self.softmax_probabilities and self.topdown_enabled:
+                    # Limit the membrane potential of neurons
+                    self.layer_h[r_o, c_o].excitation[0, 0] = np.clip(
+                        self.layer_h[r_o, c_o].excitation[0, 0], 0, -self.e_min_h)
+
         self.weights_ih = np.clip(self.weights_ih, -self.log_c, self.w_max)
         if self.topdown_enabled:
             self.weights_oh = np.clip(self.weights_oh, -self.log_c, self.w_max)
@@ -274,13 +279,6 @@ class NetworkHierarchical(Network):
         # Propagate through the output layer
         ks_o, n_spikes_o = self.propagate_output(t, learn=learn_o)
         self.weights_ho = np.clip(self.weights_ho, -self.log_c, self.w_max)
-
-        if not self.softmax_probabilities and self.topdown_enabled:
-            for r_o in range(self.s_os):
-                for c_o in range(self.s_os):
-                    if not self.softmax_probabilities:  # Limit the membrane potential of neurons
-                        self.layer_h[r_o, c_o].excitation[0, 0] = np.clip(
-                            self.layer_h[r_o, c_o].excitation[0, 0], 0, -self.e_min_h)
 
         return ks_o
 

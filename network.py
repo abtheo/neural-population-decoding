@@ -410,7 +410,7 @@ class Network():
             cm_spike_confidence[:, prediction] += label_counts
 
             # Compare the prediction to the true label
-            label = labels[index_im]
+            label = int(labels[index_im])
             if prediction == label:
                 cnt_correct += 1
             else:
