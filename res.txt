@@ -1,4 +1,22 @@
+--- BRCA - MRMR U XGB (19) ---
+
+K_o = 2 && K_h = 32:
+Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative
+0     73  78.082192 -0.037854  0.019286              0             57              14               2
+
+--- BRCA - XGBoost Features ---
+
+K_o = 2 && K_h = 32:
+   Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative
+0     73  76.712329 -0.037058  0.020209              0             56              15               2
+
 --- BRCA: SMOTE trained, test on original data only ---
+
+K_o = 2 && K_h = 240:
+Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative 
+0     73  75.342466 -0.036169  0.021141              0             55           16               2 
+         
+
 K_o = 2 && K_h = 16:
 Count   Accurary       RAI       NMI  True Positive  True Negative     False Positive  False Negative  
 0     73  76.712329 -0.037058  0.020209              0             56            15               2  

@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 import simpsom as sps
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 from mrmr import mrmr_classif
 from tqdm import tqdm
@@ -62,8 +62,8 @@ if __name__ == "__main__":
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
     data.columns = range(data.shape[1])
     # MRMR feature selection
-    K = 15
-    # selected_features = mrmr_classif(data, target, K=K)
+    K = 10
+    selected_features = mrmr_classif(data, target, K=K)
     # [2594, 14561, 11197, 9788, 678, 11790, 855, 3726, 5275, 7583, 13399, 14651, 11359, 14948, 1267]
 
     # old_shape = data.shape  # just for printing
@@ -73,7 +73,9 @@ if __name__ == "__main__":
     clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
                             objective='binary:logistic')
     clf.fit(data, target)
-    selected_features = (-clf.feature_importances_).argsort()[:K]
+    selected_features_xgb = (-clf.feature_importances_).argsort()[:K]
+
+    selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
     #  [ 2594  1267  2238  2503 12325 13441  6756  4491 10034 11006 11005 11004 0 11002 11001]
 
@@ -144,9 +146,11 @@ if __name__ == "__main__":
     np.save(f"{directory_path}/target.npy", target_smote)
 
     # TODO: Also exponent the values to produce a greater variance?
+    # Let's try Z-score normalization first, then rescale
+    var_scaler = StandardScaler()
     feature_scaler = MinMaxScaler(copy=True, feature_range=(10, 1200))
-    feature_scaler.fit(data_smote)
-    data_norm = feature_scaler.transform(data_smote)
+    data_norm = feature_scaler.fit_transform(
+        var_scaler.fit_transform(data_smote))
 
     for i, patient in tqdm(enumerate(data_norm)):
         # Draw SOM per patient,
@@ -154,7 +158,8 @@ if __name__ == "__main__":
         G = nx.chvatal_graph()
         nx.draw_networkx_nodes(G,
                                node_positions,
-                               nodelist=[i for i in range(K)],
+                               nodelist=[i for i in range(
+                                   len(selected_features))],
                                node_color=[0, 0, 0],
                                edgecolors=[0, 0, 0],
                                node_size=patient,

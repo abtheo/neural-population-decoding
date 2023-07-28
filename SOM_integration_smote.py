@@ -11,11 +11,12 @@ from PIL import Image
 import os
 from numpy.lib.type_check import imag
 from tqdm import tqdm
+from imblearn.over_sampling import SMOTE
 
 
 subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic_integration.csv"
-directory_path = f"./patient_som_data_integration/{subtype}"
+directory_path = f"./patient_som_data_integration_smote/{subtype}"
 
 
 def rgba_to_binary(image_path):
@@ -42,11 +43,6 @@ if __name__ == "__main__":
     target = df[df['OMIC_ID'] == 'Target'].iloc[:,
                                                 4:].to_numpy(dtype=np.int32).flatten()
 
-    # .to_numpy(dtype=np.int32)[ :, 4:].flatten()
-
-    # .drop(["OMIC_ID", "GENE_ID", "miRNA_ID", "METHYL_ID"], axis=1).T
-
-    np.save(f"{directory_path}/target.npy", target)
     """
         iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%.
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
@@ -74,7 +70,7 @@ if __name__ == "__main__":
 
         # MRMR feature selection
         data.columns = list(range(data.columns.size))
-        K = 10
+        K = 15
         selected_features = mrmr_classif(data, target, K=K)
         data = data[selected_features]
 
@@ -121,13 +117,25 @@ if __name__ == "__main__":
         # The graph we just drew is only a visual representation of the positions,
         # but the sizes are an arbitrary constant.
 
+        # Perform SMOTE
+        oversample = SMOTE()
+        data_smote, target_smote = oversample.fit_resample(data, target)
+
+        is_original = [np.any(np.all(data == d, axis=1))
+                       for d in data_smote.values]
+        print(is_original)
+        # Maybe no need to split by omic? Should all be equivalent
+        # Yeah let's just have one of these
+        np.save(f"{directory_path}/original.npy", is_original)
+        np.save(f"{directory_path}/target.npy", target_smote)
+
         # Now, using the node_positions, we take each patient
         # and use their values of the selected_features
         # to determine the node_sizes.
         # However, we first need to normalise the *features* into a range.
-        feature_scaler = MinMaxScaler(copy=True, feature_range=(100, 1000))
-        feature_scaler.fit(data)
-        data_norm = feature_scaler.transform(data)
+        feature_scaler = MinMaxScaler(copy=True, feature_range=(10, 1200))
+        feature_scaler.fit(data_smote)
+        data_norm = feature_scaler.transform(data_smote)
 
         for i, patient in tqdm(enumerate(data_norm)):
             # Draw SOM per patient,
@@ -141,7 +149,7 @@ if __name__ == "__main__":
                                    node_size=patient,
                                    alpha=1, margins=0.25)
 
-            img_path = f'{directory_path}/patient_{df.columns[i+1]}/'
+            img_path = f'{directory_path}/patient_{i}/'
 
             if not os.path.isdir(img_path):
                 os.makedirs(img_path)
@@ -162,7 +170,7 @@ if __name__ == "__main__":
     for patient_subdir in tqdm(patient_subdirectories, desc="Collecting .png files..."):
         patient_multi_omics = []
         for omic in omics:
-            full_path = directory_path + patient_subdir + f'/{omic}.png'
+            full_path = f'{directory_path}/{patient_subdir}/{omic}.png'
             img = rgba_to_binary(full_path)
             patient_multi_omics.append(img)
         output.append(patient_multi_omics)

@@ -129,7 +129,6 @@ class NetworkIntegration(Network):
 
         # Fire the selected neurons and propogate their signal to the next layer
         for k in ks:
-
             # Fire neuron <k>
             self.layer.fire(0, 0, k, t)
             self.n_spikes_since_reset[k] += 1
