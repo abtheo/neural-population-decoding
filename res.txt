@@ -1,4 +1,4 @@
---- BRCA - MRMR U XGB (19) ---
+--- BRCA - MRMR U XGB (19 features) ---
 
 K_o = 2 && K_h = 32:
 Count   Accurary       RAI       NMI  True Positive  True Negative  False Positive  False Negative

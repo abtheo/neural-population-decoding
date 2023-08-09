@@ -32,15 +32,16 @@ def run_integration():
     P.s_slice = S
     P.topdown_enabled = True
     P.softmax_probabilities = True
-    # P.K = 2
+    P.K = 8
 
     # Set the parameters for Hierarchical network
     P_h = Parameters()
     P_h.set_hierarchical(argv)
     P_h.s_slice = S
     P_h.topdown_enabled = True
-    # P.K_h = 32
-    # P.K_o = 2
+    P_h.K_h = 32
+    P_h.K_o = 8
+    P_h.e_min_o = 0.01
 
     # Initialize the hierarchical network
     network = NetworkIntegration(P, P_h, P_h, P_h)
@@ -66,16 +67,6 @@ def run_integration():
     X_test = X_test[original_test]
     labels_test = labels_test[original_test].flatten()
 
-    """
-     So we need to unpack the tuple of omics here,
-     after the split but not passed into the spikes.
-     Actually, we need to parameterize the store_spikes function
-     to take a path for each omic we unpack...
-
-    Okay so we don't need to replicate the per-patient folder structure here,
-    we do need to split the data per Hierarchical network we're training within the I-Net
-
-    """
     # STORE SPIKES (only needs to run once):
 
     # for i, omic in enumerate(["gene", "miRNA", "methyl"]):
@@ -145,12 +136,11 @@ def run_integration():
                     (network.net_b.s_os, network.net_b.s_os, network.net_b.K_h), dtype=np.uint16)
                 network.net_b.n_spikes_since_reset_o = np.zeros(
                     network.net_b.K_o, dtype=np.uint16)
-                network.n_spikes_since_reset = np.zeros(
-                    network.K, dtype=np.uint16)
                 network.net_c.n_spikes_since_reset_h = np.zeros(
                     (network.net_c.s_os, network.net_c.s_os, network.net_c.K_h), dtype=np.uint16)
                 network.net_c.n_spikes_since_reset_o = np.zeros(
                     network.net_c.K_o, dtype=np.uint16)
+
                 network.n_spikes_since_reset = np.zeros(
                     network.K, dtype=np.uint16)
 
@@ -221,11 +211,11 @@ def run_integration():
                 (network.net_b.s_os, network.net_b.s_os, network.net_b.K_h), dtype=np.uint16)
             network.net_b.n_spikes_since_reset_o = np.zeros(
                 network.net_b.K_o, dtype=np.uint16)
-            network.n_spikes_since_reset = np.zeros(network.K, dtype=np.uint16)
             network.net_c.n_spikes_since_reset_h = np.zeros(
                 (network.net_c.s_os, network.net_c.s_os, network.net_c.K_h), dtype=np.uint16)
             network.net_c.n_spikes_since_reset_o = np.zeros(
                 network.net_c.K_o, dtype=np.uint16)
+
             network.n_spikes_since_reset = np.zeros(network.K, dtype=np.uint16)
 
     # Print final results
