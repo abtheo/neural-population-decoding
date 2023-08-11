@@ -14,6 +14,7 @@ from tqdm import tqdm
 from imblearn.over_sampling import SMOTE
 from collections import Counter
 import xgboost as xgb
+import glob
 
 subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
@@ -136,11 +137,18 @@ if __name__ == "__main__":
     # We also need some way to remember
     # which data is synthetic and which is the original,
     # so that we can do testing on only original data.
-    oversample = SMOTE()
+    oversample = SMOTE(sampling_strategy=0.8)
     data_smote, target_smote = oversample.fit_resample(data, target)
 
     is_original = [np.any(np.all(data == d, axis=1))
                    for d in data_smote.values]
+
+    # First clear out old files
+    # input("WARNING: Deleteing all files in directory {directory_path}. Continue?")
+
+    files = glob.glob(f"{directory_path}/*")
+    for f in files:
+        os.remove(f)
 
     np.save(f"{directory_path}/original.npy", is_original)
     np.save(f"{directory_path}/target.npy", target_smote)

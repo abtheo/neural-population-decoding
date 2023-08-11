@@ -453,6 +453,10 @@ class Network():
         df_dict["False Positive"] = CM[0][1]
         df_dict["False Negative"] = CM[1][0]
 
+        # Add actual predictions and labels in case we need later
+        df_dict["Labels"] = labels
+        df_dict["Predictions"] = predictions
+
         results_string = ""
         results_string += "Achieved an accuracy of {:.2f}%".format(
             accuracy) + "\n"
