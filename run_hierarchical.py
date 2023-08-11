@@ -47,13 +47,13 @@ def run_hierarchical():
     data_handler = DataHandler(P)
     network = NetworkHierarchical(P)
 
-    with open(f'./patient_som_data_smote/{subtype}/SOM_data.npy', 'rb') as f:
+    with open(f'./patient_som_data/{subtype}/SOM_data.npy', 'rb') as f:
         X = np.load(f)
 
-    with open(f'./patient_som_data_smote/{subtype}/target.npy', 'rb') as f:
+    with open(f'./patient_som_data/{subtype}/target.npy', 'rb') as f:
         targets = np.load(f)
 
-    with open(f'./patient_som_data_smote/{subtype}/original.npy', 'rb') as f:
+    with open(f'./patient_som_data/{subtype}/original.npy', 'rb') as f:
         original = np.load(f)
 
     # PREP DATA

@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 import simpsom as sps
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
 from mrmr import mrmr_classif
 from tqdm import tqdm
@@ -11,10 +11,14 @@ from PIL import Image
 import os
 from numpy.lib.type_check import imag
 from tqdm import tqdm
-
+from imblearn.over_sampling import SMOTE
+from collections import Counter
+import xgboost as xgb
+import glob
 
 subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
+directory_path = f"patient_som_data/{subtype}"
 
 
 def rgba_to_binary(image_path):
@@ -38,9 +42,10 @@ if __name__ == "__main__":
     df = pd.read_csv(path)
     # extract the target variable
     target = df[df['OMIC_ID'] == 'Target'].drop("OMIC_ID", axis=1).T
-    np.save(f"./patient_som_data/{subtype}/target.npy", target)
+    # Do not save target yet, will perform SMOTE later
+    # np.save(f"{directory_path}/target.npy", target)
     """
-        iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%. 
+        iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%.
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
 
         Then perform Minimum Redundancy Maximum Relevance (mRMR)
@@ -56,16 +61,29 @@ if __name__ == "__main__":
     data = data[data.columns[sel.get_support(indices=True)]]
     print(
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
-
+    data.columns = range(data.shape[1])
     # MRMR feature selection
-    K = 15
+    K = 10
     selected_features = mrmr_classif(data, target, K=K)
-    # selected_features = [9857, 55528, 42604, 37049,
-    #                      2642, 44820, 3320, 14267, 20244, 28642] BRCA
+    # [2594, 14561, 11197, 9788, 678, 11790, 855, 3726, 5275, 7583, 13399, 14651, 11359, 14948, 1267]
+
+    # old_shape = data.shape  # just for printing
+    # data = data[selected_features]
+    # print(
+    #     f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+    clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
+                            objective='binary:logistic')
+    clf.fit(data, target)
+    selected_features_xgb = (-clf.feature_importances_).argsort()[:K]
+
+    selected_features = np.union1d(selected_features, selected_features_xgb)
+    # print("XGBOOST: ", selected_features)
+    #  [ 2594  1267  2238  2503 12325 13441  6756  4491 10034 11006 11005 11004 0 11002 11001]
+
     old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
-        f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+        f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
     data_T = data.T
@@ -87,8 +105,8 @@ if __name__ == "__main__":
     net.PCI = True  # The weights will be initialised with PCA.
     net.train(start_learning_rate=learning_rate, epochs=no_of_epocs)
 
-    node_positions = net.project(
-        data_T, labels=list(df["OMIC_ID"][selected_features]))
+    node_positions = net.project(data_T)
+    # labels=list(df["OMIC_ID"][selected_features])
 
     # G = nx.chvatal_graph()
     # nx.draw_networkx_nodes(G,
@@ -114,9 +132,33 @@ if __name__ == "__main__":
     # and use their values of the selected_features
     # to determine the node_sizes.
     # However, we first need to normalise the *features* into a range.
-    feature_scaler = MinMaxScaler(copy=True, feature_range=(100, 1000))
-    feature_scaler.fit(data)
-    data_norm = feature_scaler.transform(data)
+
+    # Actually, here is where we should perform SMOTE.
+    # We also need some way to remember
+    # which data is synthetic and which is the original,
+    # so that we can do testing on only original data.
+    oversample = SMOTE(sampling_strategy=0.8)
+    data_smote, target_smote = oversample.fit_resample(data, target)
+
+    is_original = [np.any(np.all(data == d, axis=1))
+                   for d in data_smote.values]
+
+    # First clear out old files
+    # input("WARNING: Deleteing all files in directory {directory_path}. Continue?")
+
+    files = glob.glob(f"{directory_path}/*")
+    for f in files:
+        os.remove(f)
+
+    np.save(f"{directory_path}/original.npy", is_original)
+    np.save(f"{directory_path}/target.npy", target_smote)
+
+    # TODO: Also exponent the values to produce a greater variance?
+    # Let's try Z-score normalization first, then rescale
+    var_scaler = StandardScaler()
+    feature_scaler = MinMaxScaler(copy=True, feature_range=(10, 1200))
+    data_norm = feature_scaler.fit_transform(
+        var_scaler.fit_transform(data_smote))
 
     for i, patient in tqdm(enumerate(data_norm)):
         # Draw SOM per patient,
@@ -124,37 +166,27 @@ if __name__ == "__main__":
         G = nx.chvatal_graph()
         nx.draw_networkx_nodes(G,
                                node_positions,
-                               nodelist=[i for i in range(K)],
+                               nodelist=[i for i in range(
+                                   len(selected_features))],
                                node_color=[0, 0, 0],
                                edgecolors=[0, 0, 0],
                                node_size=patient,
                                alpha=1, margins=0.25)
 
-        # canvas = plt.gcf().canvas
-        # canvas.draw()
-        # img = np.array(canvas.buffer_rgba())
-        # binary_img = (img[:, :, :3] > 0).astype(np.uint8)
-        # ax = plt.imshow(img)
-        # plt.show()
-
-        # out_img = PIL.Image.fromarray(binary_img)
-        # out_img.save('bw_pil.png', bits=1, optimize=True)
-
         plt.axis('off')
         plt.savefig(
-            f'./patient_som_data/{subtype}/patient_{df.columns[i+1]}.png', bbox_inches='tight', dpi=36)
+            f'{directory_path}/patient_{i}.png', bbox_inches='tight', dpi=36)
         # plt.show()
 
     """  Compress .png images into single .npy file """
-    directory_path = f"patient_som_data/{subtype}/"
     directory = os.listdir(directory_path)
     output = []
     for file in directory:
         if ".npy" in file:
             continue
-        img = rgba_to_binary(directory_path + file)
+        img = rgba_to_binary(directory_path + "/" + file)
         output.append(img)
 
     image_array_stack = np.stack(output, axis=0)
     print(image_array_stack.shape)
-    np.save(f"patient_som_data/{subtype}/SOM_data", image_array_stack)
+    np.save(f"{directory_path}/SOM_data", image_array_stack)
