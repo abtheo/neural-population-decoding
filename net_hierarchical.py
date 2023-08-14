@@ -34,11 +34,8 @@ class NetworkHierarchical(Network):
         # Network outer and inner square size
         self.s_os = 4  # The network has <s_os**2> hidden layers
         # Each hidden layer receives input from <s_is**2> neurons of the input layer
-        self.h = 11*4  # 11 * 8?
+        self.h = 11*4
         self.w = 8*4
-
-        # Designates which MNIST to use
-        self.tag_mnist = P.tag_mnist
 
         # The number of output neurons
         self.K_h = P.K_h
@@ -298,145 +295,6 @@ class NetworkHierarchical(Network):
 #         self.ls_spike_times_h = []
 #         self.ls_spike_times = []
 # =============================================================================
-
-    def train(self, data_handler, P):
-
-        # Load the actual MNIST (train) pixel data and corresponding labels
-        X, labels, _, _ = data_handler.load_mnist(tag_mnist=self.tag_mnist)
-
-        time_start = time.time()
-        # Iterate over the spike data in slices of size <data_handler.s_slice>
-        for ith_slice in range(0, util.SHAPE_MNIST_TRAIN[0]//data_handler.s_slice):
-
-            # Retrieve slice <ith_slice> of the spike data
-            spike_data = data_handler.get_mnist_spikes(
-                ith_slice, tag_mnist=self.tag_mnist, train=True)
-            for index_im, spike_times in enumerate(spike_data):
-
-                # Convert the flat <spike_times> to a tiled array
-                spike_times = self.tile_input(
-                    spike_times, self.s_os, self.w, self.h)
-
-                # Determine the complete dataset index (rather than that of the slice)
-                index_im_all = ith_slice*data_handler.s_slice+index_im
-                self.index_im_all = index_im_all  # $$$
-                self.print_interval = P.print_interval  # $$$
-
-                # Propogate through the network according to the current timestep and given spike times
-                for t in range(data_handler.ms):
-                    self.propagate(spike_times, t, learn_h=True, learn_o=True)
-                self.reset()  # Reset the network between images
-
-                # Print, plot, and save data according to the given parameters
-                time_start = self.print_plot_save(
-                    data_handler, X, labels, index_im_all, util.SHAPE_MNIST_TRAIN[0], P, time_start)
-
-                # Reset spike counters
-                self.n_spikes_since_reset_h = np.zeros(
-                    (self.s_os, self.s_os, self.K_h), dtype=np.uint16)
-                self.n_spikes_since_reset_o = np.zeros(
-                    self.K_o, dtype=np.uint16)
-
-# =============================================================================
-#                 if index_im_all > 5500: ###############@@@@@@@@@@@@@@%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#                     print("EXITING AT 5500 images!!!")
-#                     return
-# =============================================================================
-
-    def test(self, data_handler, P):
-
-        # Load the actual MNIST (test) pixel data and corresponding labels
-        _, _, X, labels = data_handler.load_mnist(tag_mnist=self.tag_mnist)
-
-        # The number of times each neuron spiked for each label
-        neuron_label_counts = np.zeros((self.K_o, 10), dtype=np.uint32)
-
-        # For each image the number of times each neuron spiked
-        neuron_image_counts = np.zeros((util.SHAPE_MNIST_TEST[0], self.K_o))
-
-        index_im_all = 0
-        time_start = time.time()
-        # Iterate over the spike data in slices of size <data_handler.s_slice>
-        for ith_slice in range(0, util.SHAPE_MNIST_TEST[0]//data_handler.s_slice):
-
-            # Retrieve slice <ith_slice> of the spike data
-            spike_data = data_handler.get_mnist_spikes(
-                ith_slice, tag_mnist=self.tag_mnist, train=False)
-            for index_im, spike_times in enumerate(spike_data):
-
-                # Convert the flat <spike_times> to a tiled array
-                spike_times = self.tile_input(
-                    spike_times, self.s_os, self.w, self.h)
-
-                # Determine the complete dataset index (rather than that of the slice)
-                index_im_all = ith_slice*data_handler.s_slice+index_im
-                self.index_im_all = index_im_all  # $$$
-                self.print_interval = P.print_interval  # $$$
-
-                # Retrieve the label of the current image
-                label = labels[index_im_all]
-
-                # Propogate through the network according to the current timestep and given spike times
-                for t in range(data_handler.ms):
-                    self.propagate(
-                        spike_times, t, learn_h=False, learn_o=False)
-                self.reset()  # Reset the network between images
-
-                # Keep track of the results
-                neuron_label_counts[:, label] += self.n_spikes_since_reset_o
-                neuron_image_counts[index_im_all] = self.n_spikes_since_reset_o
-
-                # Print, plot, and save data according to the given parameters
-                time_start = self.print_plot_save(
-                    data_handler, X, labels, index_im_all, util.SHAPE_MNIST_TEST[0], P, time_start)
-
-                # Evaluate results after every <evaluation_interval> images
-                if index_im_all > 0 and index_im_all % P.evaluation_interval == 0:
-                    print("\nEvaluating results after {} images:".format(
-                        index_im_all))
-                    self.evaluate_results(data_handler, neuron_label_counts[:, :index_im_all+1],
-                                          neuron_image_counts[:index_im_all+1], labels[:index_im_all+1])
-
-                # Reset spike counters
-                self.n_spikes_since_reset_h = np.zeros(
-                    (self.s_os, self.s_os, self.K_h), dtype=np.uint16)
-                self.n_spikes_since_reset_o = np.zeros(
-                    self.K_o, dtype=np.uint16)
-
-# =============================================================================
-#             if index_im_all > 10:
-#                 break
-# =============================================================================
-
-            gc.collect()  # Clear memory of unused items # ***
-
-        # Evaluate the results for the final time
-        print("\nDone, final evaluation:")
-        results_string, cm_classifications, cm_spike_uncertainty = self.evaluate_results(data_handler,
-                                                                                         neuron_label_counts[:,
-                                                                                                             :index_im_all+1],
-                                                                                         neuron_image_counts[:index_im_all+1],
-                                                                                         labels[:index_im_all+1])
-
-        if self.save_test_results:
-            print("Saving test results ...")
-            os.mkdir(self.pd_test_results)
-            with open(self.pd_test_results+'parameters.txt', 'w') as f:
-                f.write(str(self.parameters))
-            util.dump(self.parameters, self.pd_test_results +
-                      self.nf_test_parameters)
-            np.save(self.pd_test_results +
-                    self.nf_test_weights_ih, self.weights_ih)
-            np.save(self.pd_test_results +
-                    self.nf_test_weights_ho, self.weights_ho)
-            np.save(self.pd_test_results+self.nf_test_labels, labels)
-            np.save(self.pd_test_results +
-                    self.nf_neuron_label_counts, neuron_label_counts)
-            np.save(self.pd_test_results +
-                    self.nf_neuron_image_counts, neuron_image_counts)
-            # np.save(self.pd_test_results+self.nf_cm_classifications, cm_classifications)
-            # np.save(self.pd_test_results+self.nf_cm_spike_uncertainty, cm_spike_uncertainty)
-            print("Test results are saved!")
 
     def hidden_to_pixels(self, index_circuit):
         """ Convert network weights to pixels. """

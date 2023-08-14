@@ -29,6 +29,7 @@ Strength of response to individual image?
 
 Class seperation is an extremely valuable property of the network. 
 We want the responses for each neuron to be as distinct as possible for different classes, eg responding very highly to 1 and not at all to 0.
+Could even 'prune' neurons with low distinction?
 
 
 Reframe around Problems with Population Coding:
