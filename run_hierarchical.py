@@ -41,8 +41,8 @@ def run_hierarchical():
     S = 10
     P.s_slice = S
     P.topdown_enabled = True
-    P.K_h = 32
-    P.K_o = 8
+    P.K_h = 64
+    P.K_o = 99
 
     data_handler = DataHandler(P)
 
@@ -66,7 +66,7 @@ def run_hierarchical():
     original = original[indices]
 
     # Store the data in slices of size <self.s_slice>
-    # store_spikes(X, data_handler, clear=True)
+    store_spikes(X, data_handler, clear=True)
 
     # Then split sequentially for each fold
     K = 5
