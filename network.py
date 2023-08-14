@@ -20,9 +20,9 @@ class Inhibitor():
         self.inh_strength = inh_start
         self.target_interval = int(np.ceil(1000/hertz_o))
         self.prev_errors_u = []
-        print(f"   inh_strength={self.inh_strength}")
-        print(f"target_interval={self.target_interval}")
-        print()
+        # print(f"   inh_strength={self.inh_strength}")
+        # print(f"target_interval={self.target_interval}")
+        # print()
 
         self.inh_change = inh_change
         self.inh_ratio = inh_ratio
@@ -49,10 +49,6 @@ class Inhibitor():
                 self.accumulated_error += error
             self.inh_strength = max(0, self.inh_change*self.accumulated_error)
             self.mse_accumulated += error**2
-        if random.random() < 0.00000:  # ***
-            print(f"t={t}, error={error:3d}, accumulated_error={self.accumulated_error:8.2f}," +
-                  f" error_d={error-self.error_prev:3d}, inh_strength={self.inh_strength:8.2f}" +
-                  f" --- mse_accumulated={self.mse_accumulated}")
         self.error_prev = error
 
 

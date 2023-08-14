@@ -228,8 +228,12 @@ class NetworkHierarchical(Network):
                                 1)
                             self.layer_h[r_o, c_o].excitation[0,
                                                               0] += excitation[:, r_o, c_o] - inhibition
+                        if learn:
+                            self.stdp(
+                                self.layer_h[r_o, c_o], self.layer_o, self.weights_ho[k_o, r_o, c_o], t, k_o)
 
-            if learn:  # Update the incoming connections weights of neuron <k_o> of each hidden circuit
+            # Update the incoming connections weights of neuron <k_o> of each hidden circuit
+            if not self.topdown_enabled and learn:
                 for r_o in range(self.s_os):
                     for c_o in range(self.s_os):
                         self.stdp(

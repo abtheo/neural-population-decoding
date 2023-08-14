@@ -42,8 +42,7 @@ if __name__ == "__main__":
     df = pd.read_csv(path)
     # extract the target variable
     target = df[df['OMIC_ID'] == 'Target'].drop("OMIC_ID", axis=1).T
-    # Do not save target yet, will perform SMOTE later
-    # np.save(f"{directory_path}/target.npy", target)
+
     """
         iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%.
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
@@ -65,7 +64,6 @@ if __name__ == "__main__":
     # MRMR feature selection
     K = 10
     selected_features = mrmr_classif(data, target, K=K)
-    # [2594, 14561, 11197, 9788, 678, 11790, 855, 3726, 5275, 7583, 13399, 14651, 11359, 14948, 1267]
 
     # old_shape = data.shape  # just for printing
     # data = data[selected_features]
@@ -78,12 +76,11 @@ if __name__ == "__main__":
 
     selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
-    #  [ 2594  1267  2238  2503 12325 13441  6756  4491 10034 11006 11005 11004 0 11002 11001]
 
     old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
-        f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+        f"MRMR + XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
     data_T = data.T

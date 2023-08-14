@@ -45,7 +45,6 @@ def run_hierarchical():
     P.K_o = 8
 
     data_handler = DataHandler(P)
-    network = NetworkHierarchical(P)
 
     with open(f'./patient_som_data/{subtype}/SOM_data.npy', 'rb') as f:
         X = np.load(f)
@@ -74,6 +73,9 @@ def run_hierarchical():
     slice = len(targets)//K
     final_df = pd.DataFrame()
     for k in range(K):
+        # Initialise network
+        network = NetworkHierarchical(P)
+
         # This range defines the test set.
         lower = slice*k
         upper = min(slice*(k+1), len(targets))
@@ -188,13 +190,13 @@ def run_hierarchical():
         results_df["Train_0_count"] = np.sum(labels_train == 0)
         results_df["Train_1_count"] = np.sum(labels_train == 1)
 
-        print(f"Results for fold {k}:")
-        print(results_df)
-
         if len(final_df) == 0:
             final_df = results_df
         else:
             final_df = pd.concat([final_df, results_df])
+
+        print(f"Results for fold {k}:")
+        print(final_df)
 
     final_df.to_csv("./results_df.csv")
 

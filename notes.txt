@@ -27,6 +27,11 @@ Strength of response to individual image?
     but the sum of neurons 0,1,2 are stronger than neuron 4 and they all predict the opposite class with greater seperation.
     Could even do a linear regression of responses to targets lol
 
+Population Vector Decoder - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3367001/
+"For the population vector decoder the responses of all neurons were vector summed with an orientation equal to the neuron’s preferred orientation before adaptation."
+
+Temporal Winner-Takes-All - https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000286
+
 Class seperation is an extremely valuable property of the network. 
 We want the responses for each neuron to be as distinct as possible for different classes, eg responding very highly to 1 and not at all to 0.
 Could even 'prune' neurons with low distinction?
