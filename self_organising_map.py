@@ -134,7 +134,7 @@ if __name__ == "__main__":
     # We also need some way to remember
     # which data is synthetic and which is the original,
     # so that we can do testing on only original data.
-    oversample = SMOTE(sampling_strategy=0.9)
+    oversample = SMOTE(sampling_strategy=0.33)
     data_smote, target_smote = oversample.fit_resample(data, target)
 
     is_original = [np.any(np.all(data == d, axis=1))

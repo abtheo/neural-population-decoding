@@ -28,7 +28,7 @@ Strength of response to individual image?
     Could even do a linear regression of responses to targets lol
 
 Population Vector Decoder - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3367001/
-"For the population vector decoder the responses of all neurons were vector summed with an orientation equal to the neuron’s preferred orientation before adaptation."
+"the responses of all neurons were vector summed with an orientation equal to the neuron’s preferred orientation before adaptation."
 
 Temporal Winner-Takes-All - https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1000286
 
