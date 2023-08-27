@@ -18,7 +18,7 @@ import glob
 
 subtype = "BRCA"
 path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
-directory_path = f"patient_som_data/{subtype}"
+directory_path = f"patient_som_data\\{subtype}"
 
 
 def rgba_to_binary(image_path):
@@ -62,8 +62,8 @@ if __name__ == "__main__":
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
     data.columns = range(data.shape[1])
     # MRMR feature selection
-    K = 10
-    selected_features = mrmr_classif(data, target, K=K)
+    K = 20
+    # selected_features = mrmr_classif(data, target, K=K)
 
     # old_shape = data.shape  # just for printing
     # data = data[selected_features]
@@ -72,9 +72,9 @@ if __name__ == "__main__":
     clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
                             objective='binary:logistic')
     clf.fit(data, target)
-    selected_features_xgb = (-clf.feature_importances_).argsort()[:K]
+    selected_features = (-clf.feature_importances_).argsort()[:K]
 
-    selected_features = np.union1d(selected_features, selected_features_xgb)
+    # selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
 
     old_shape = data.shape  # just for printing
@@ -134,14 +134,14 @@ if __name__ == "__main__":
     # We also need some way to remember
     # which data is synthetic and which is the original,
     # so that we can do testing on only original data.
-    oversample = SMOTE(sampling_strategy=0.33)
+    oversample = SMOTE(sampling_strategy=1)
     data_smote, target_smote = oversample.fit_resample(data, target)
 
     is_original = [np.any(np.all(data == d, axis=1))
                    for d in data_smote.values]
-
+    # is_original = [True for i in range(len(target))]
     # First clear out old files
-    # input("WARNING: Deleteing all files in directory {directory_path}. Continue?")
+    # input(f"WARNING: Deleteing all files in directory {directory_path}. Continue?")
 
     files = glob.glob(f"{directory_path}/*")
     for f in files:
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     # TODO: Also exponent the values to produce a greater variance?
     # Let's try Z-score normalization first, then rescale
     var_scaler = StandardScaler()
-    feature_scaler = MinMaxScaler(copy=True, feature_range=(10, 1200))
+    feature_scaler = MinMaxScaler(copy=True, feature_range=(50, 2000))
     data_norm = feature_scaler.fit_transform(
         var_scaler.fit_transform(data_smote))
 
@@ -161,14 +161,20 @@ if __name__ == "__main__":
         # Draw SOM per patient,
         # encoding their feature expression values as the node_sizes
         G = nx.chvatal_graph()
-        nx.draw_networkx_nodes(G,
-                               node_positions,
-                               nodelist=[i for i in range(
-                                   len(selected_features))],
-                               node_color=[0, 0, 0],
-                               edgecolors=[0, 0, 0],
-                               node_size=patient,
-                               alpha=1, margins=0.25)
+        ax = plt.gca()
+        plt.cla()
+        # iterate plotting each feature so we can customise its marker
+        for j in range(len(selected_features)):
+            nx.draw_networkx_nodes(G,
+                                   [node_positions[j]],
+                                   nodelist=[0],
+                                   node_color=[0, 0, 0],
+                                   edgecolors=[0, 0, 0],
+                                   node_size=patient[j],
+                                   ax=ax,
+                                   alpha=1,
+                                   margins=0.25,
+                                   node_shape=(3, 0, int(patient[j] % 360)))
 
         plt.axis('off')
         plt.savefig(

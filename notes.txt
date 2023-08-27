@@ -16,8 +16,14 @@ Alternative methods of Population Coding:
     N0: [200, 40] = [2, 4] = C1
     N1: [4000, 100] = [40, 10] = C0
 
+- Use 'confidence' based on the other neurons' firing rates,
+    e.g. if only zero-assigned neurons fire it has high confidence,
+    noisy = lower confidence
+    but this doesn't really handle the pop coding part or the classification...
+
 Problem with all of these is that SMOTE is still necessary.
 If the neuron never gets a chance to respond to a 1, it will have 0 spikes for the minority class.
+
 
 Argmax is also not great, but these metrics just kick the can down the road.
 
@@ -35,6 +41,7 @@ Temporal Winner-Takes-All - https://journals.plos.org/ploscompbiol/article?id=10
 Class seperation is an extremely valuable property of the network. 
 We want the responses for each neuron to be as distinct as possible for different classes, eg responding very highly to 1 and not at all to 0.
 Could even 'prune' neurons with low distinction?
+
 
 
 Reframe around Problems with Population Coding:

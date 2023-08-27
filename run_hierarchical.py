@@ -1,4 +1,3 @@
-from typing import final
 from net_hierarchical import NetworkHierarchical
 from util import Parameters
 from data_handler import DataHandler
@@ -11,11 +10,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob
+import xgboost as xgb
 
-subtype = "BRCA"
+subtype = "KIRC"
 
 
-def store_spikes(X, data_handler, train=True, clear=False):
+def store_spikes(X, data_handler, clear=False):
     if clear:
         files = glob.glob(f'./data/spikes/{subtype}/*')
         for f in files:
@@ -41,8 +41,8 @@ def run_hierarchical():
     S = 10
     P.s_slice = S
     P.topdown_enabled = True
-    P.K_h = 64
-    P.K_o = 99
+    P.K_h = 32
+    P.K_o = 64
 
     data_handler = DataHandler(P)
 
@@ -66,12 +66,16 @@ def run_hierarchical():
     original = original[indices]
 
     # Store the data in slices of size <self.s_slice>
-    store_spikes(X, data_handler, clear=True)
+    # store_spikes(X, data_handler, clear=True)
 
     # Then split sequentially for each fold
     K = 5
     slice = len(targets)//K
     final_df = pd.DataFrame()
+    n_img_k = []
+    n_labels_k = []
+    test_labels_k = []
+    clf_predictions_k = []
     for k in range(K):
         # Initialise network
         network = NetworkHierarchical(P)
@@ -102,7 +106,9 @@ def run_hierarchical():
             f"Starting fold {k}. Test set bounds are {lower} to {upper} from a total length of {len(targets)}.")
 
         # TRAIN NETWORK
+        neuron_image_counts = np.zeros((X_train.shape[0], network.K_o))
         for epoch in range(2):
+            index_train = 0
             # The number of times each neuron spiked for each label
             neuron_label_counts = np.zeros((network.K_o, 2), dtype=np.uint32)
 
@@ -133,11 +139,18 @@ def run_hierarchical():
                     neuron_label_counts[:,
                                         label] += network.n_spikes_since_reset_o
 
+                    neuron_image_counts[index_train] = network.n_spikes_since_reset_o
+                    index_train += 1
+
                     # Reset spike counters
                     network.n_spikes_since_reset_h = np.zeros(
                         (network.s_os, network.s_os, network.K_h), dtype=np.uint16)
                     network.n_spikes_since_reset_o = np.zeros(
                         network.K_o, dtype=np.uint16)
+
+        # clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
+        #                         objective='binary:logistic')
+        # clf.fit(neuron_image_counts, labels_train)
 
         # TESTING
         index_im_all = 0
@@ -147,6 +160,7 @@ def run_hierarchical():
         # For each image the number of times each neuron spiked
         neuron_image_counts = np.zeros((X_test.shape[0], network.K_o))
 
+        predictions = []
         # Iterate over the spike data in slices of size <data_handler.s_slice>
         for ith_slice in tqdm(test_slices):
             # Retrieve slice <ith_slice> of the spike data
@@ -157,8 +171,10 @@ def run_hierarchical():
                 # Determine the complete dataset index (rather than that of the slice)
                 index_im_all = ith_slice+index_im
 
+                print(index_im_all, index_test)
                 # Ensure sample is in the test set and not synthetic.
                 if not (index_im_all >= lower and index_im_all < upper) or not original[index_im_all]:
+                    print("skip")
                     continue
 
                 # Convert the flat <spike_times> to a tiled array
@@ -173,6 +189,9 @@ def run_hierarchical():
 
                 neuron_image_counts[index_test] = network.n_spikes_since_reset_o
                 index_test += 1
+
+                # pred = clf.predict([network.n_spikes_since_reset_o])
+                # predictions.append(pred)
 
                 # Print, plot, and save data according to the given parameters
                 # time_start = network.print_plot_save(
@@ -198,7 +217,16 @@ def run_hierarchical():
         print(f"Results for fold {k}:")
         print(final_df)
 
+        n_labels_k.append(neuron_label_counts)
+        n_img_k.append(neuron_image_counts)
+        test_labels_k.append(labels_test)
+        # clf_predictions_k.append(predictions)
+
     final_df.to_csv("./results_df.csv")
+    np.save("./neuron_label_counts.npy", n_labels_k)
+    np.save("./neuron_image_counts.npy", n_img_k)
+    np.save("./labels.npy", test_labels_k)
+    # np.save("./clf_predictions.npy", clf_predictions_k)
 
 
 if __name__ == "__main__":
