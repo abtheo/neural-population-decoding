@@ -3,6 +3,9 @@ import pandas as pd
 from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.metrics import recall_score, f1_score
 import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+from scipy.special import factorial
+from scipy.stats import poisson
 
 # def prune(fold):
 #     """
@@ -23,7 +26,7 @@ def sample_average(fold):
         neuron_label_dict[l] = np.argmax(avg_label_counts)
 
     sample_avg_predictions = []
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
         # Count for each label how often its corresponding neurons spike
         label_counts = np.zeros(2)
         for k, spike_count in enumerate(spike_counts):
@@ -48,7 +51,7 @@ def population_vector_decoder(fold):
 
     # Vector sum... is what we were doing already.
     predictions = []
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
 
         # Count for each label how often its corresponding neurons spike
         label_counts = np.zeros(2, dtype=np.uint16)
@@ -69,7 +72,7 @@ def max_neuron(fold):
         neuron_label_dict[l] = np.argmax(fold['neuron_label_counts'][l])
 
     predictions = []
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
         # The neuron which achieved the highest spike count is considered the label
         prediction = neuron_label_dict[np.argmax(spike_counts)]
         predictions.append(prediction)
@@ -94,7 +97,7 @@ def average_max_neuron(fold):
     # so this is the network response per image
     # we should subtract the mean per neuron, then argmax
     average_firing_rates = np.mean(fold['neuron_image_counts'], axis=0)
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
 
         # The neuron which achieved the highest spike count is considered the label
         prediction = neuron_label_dict[np.argmax(
@@ -112,7 +115,7 @@ def average_firing_rate(fold):
 
     predictions = []
     average_firing_rates = np.mean(fold['neuron_image_counts'], axis=0)
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
 
         # Count for each label how often its corresponding neurons spike
         label_counts = np.zeros(2)
@@ -135,7 +138,7 @@ def average_neuron_classes(fold):
         neuron_label_dict[l] = np.argmax(fold['neuron_label_counts'][l])
 
     predictions = []
-    for index_im, spike_counts in enumerate(fold['neuron_image_counts']):
+    for spike_counts in fold['neuron_image_counts']:
 
         # Count for each label how often its corresponding neurons spike
         label_counts = np.zeros(2)
@@ -157,7 +160,39 @@ def average_neuron_classes(fold):
     return predictions
 
 
-def calc_metrics(ytrue, ypred):
+# Likelihood function (negative log-likelihood) for Poisson distribution
+def negative_log_likelihood_poisson(params, X, Y):
+    lambda_param = params
+    log_likelihood = -np.sum(np.log(factorial(Y)) -
+                             lambda_param + Y * np.log(lambda_param))
+    return -log_likelihood
+
+
+def maximum_likelihood_estimator(fold):
+    # Initial parameter guess
+    initial_lambda = 1.0
+
+    # Separate data based on labels
+    R_label_0 = fold['Labels'][fold['Labels'] == 0]
+    R_label_1 = fold['Labels'][fold['Labels'] == 1]
+
+    # Calculate Poisson parameter (mean) for each subarray
+    lambda_0 = np.mean(R_label_0)
+    lambda_1 = np.mean(R_label_1)
+
+    # Calculate MLE for conditional probabilities using Poisson PMF
+    conditional_probs_0 = [poisson.pmf(
+        r, lambda_0) for r in fold['neuron_image_counts']]
+    conditional_probs_1 = [poisson.pmf(
+        r, lambda_1) for r in fold['neuron_image_counts']]
+
+    stack = np.stack((np.sum(conditional_probs_0, axis=1),
+                     np.sum(conditional_probs_1, axis=1)))
+    predictions = np.argmax(stack, axis=0)
+    return predictions
+
+
+def calc_metrics(ypred, ytrue):
     rai = adjusted_rand_score(ytrue, ypred)
     nmi = normalized_mutual_info_score(ytrue, ypred)
     recall = 0  # recall_score(ytrue, ypred)
@@ -207,6 +242,7 @@ for ds in smote_datasets:
     firing_avg_predictions = []
     max_neuron_predictions = []
     avg_max_neuron_predictions = []
+    mle_predictions = []
     labelZ = []
 
     for kfold in range(df.shape[0]):
@@ -222,6 +258,7 @@ for ds in smote_datasets:
         fire_avg = average_firing_rate(fold)
         max_neur = max_neuron(fold)
         avg_max_neur = average_max_neuron(fold)
+        mle = maximum_likelihood_estimator(fold)
 
         # Save predictions for overall dataset evaluation
         pop_vector_predictions.append(pop_vec)
@@ -230,6 +267,7 @@ for ds in smote_datasets:
         firing_avg_predictions.append(fire_avg)
         max_neuron_predictions.append(max_neur)
         avg_max_neuron_predictions.append(avg_max_neur)
+        mle_predictions.append(mle)
         labelZ.append(fold['Labels'])
 
         # Calculate metrics per fold too
@@ -240,6 +278,7 @@ for ds in smote_datasets:
         mn_rai, mn_nmi, _, mn_f1 = calc_metrics(max_neur, fold['Labels'])
         amn_rai, amn_nmi, _, amn_f1 = calc_metrics(
             avg_max_neur, fold['Labels'])
+        mle_rai, mle_nmi, _, mle_f1 = calc_metrics(mle, fold['Labels'])
 
         res_dict = {"Dataset": ds,
                     "Fold": kfold,
@@ -266,7 +305,11 @@ for ds in smote_datasets:
 
                     "Average_Max_Neuron_F1":  amn_f1,
                     "Average_Max_Neuron_RAI": amn_rai,
-                    "Average_Max_Neuron_NMI": amn_nmi
+                    "Average_Max_Neuron_NMI": amn_nmi,
+
+                    "Max_Likelihood_Estimator_F1":  mle_f1,
+                    "Max_Likelihood_Estimator_RAI": mle_rai,
+                    "Max_Likelihood_Estimator_NMI": mle_nmi
                     }
         master_results = master_results.append(res_dict, ignore_index=True)
 
@@ -277,16 +320,23 @@ for ds in smote_datasets:
     neuron_avg_predictions = np.concatenate(neuron_avg_predictions)
     max_neuron_predictions = np.concatenate(max_neuron_predictions)
     avg_max_neuron_predictions = np.concatenate(avg_max_neuron_predictions)
+    mle_predictions = np.concatenate(mle_predictions)
     labelZ = np.concatenate(labelZ)
 
     # Evaluate overall predictions
-    pop_rai, pop_nmi, _, pop_f1 = calc_metrics(pop_vec, fold['Labels'])
-    an_rai, an_nmi, _, an_f1 = calc_metrics(avg_neur, fold['Labels'])
-    sm_rai, sm_nmi, _, sm_f1 = calc_metrics(samp_avg, fold['Labels'])
-    fa_rai, fa_nmi, _, fa_f1 = calc_metrics(fire_avg, fold['Labels'])
-    mn_rai, mn_nmi, _, mn_f1 = calc_metrics(max_neur, fold['Labels'])
+    pop_rai, pop_nmi, _, pop_f1 = calc_metrics(
+        pop_vector_predictions, labelZ)
+    an_rai, an_nmi, _, an_f1 = calc_metrics(
+        neuron_avg_predictions, labelZ)
+    sm_rai, sm_nmi, _, sm_f1 = calc_metrics(
+        sample_avg_predictions, labelZ)
+    fa_rai, fa_nmi, _, fa_f1 = calc_metrics(
+        firing_avg_predictions, labelZ)
+    mn_rai, mn_nmi, _, mn_f1 = calc_metrics(
+        max_neuron_predictions, labelZ)
     amn_rai, amn_nmi, _, amn_f1 = calc_metrics(
-        avg_max_neur, fold['Labels'])
+        avg_max_neuron_predictions, labelZ)
+    mle_rai, mle_nmi, _, mle_f1 = calc_metrics(mle_predictions, labelZ)
 
     # Add to results
     res_dict = {"Dataset": ds,
@@ -314,7 +364,11 @@ for ds in smote_datasets:
 
                 "Average_Max_Neuron_F1":  amn_f1,
                 "Average_Max_Neuron_RAI": amn_rai,
-                "Average_Max_Neuron_NMI": amn_nmi
+                "Average_Max_Neuron_NMI": amn_nmi,
+
+                "Max_Likelihood_Estimator_F1":  mle_f1,
+                "Max_Likelihood_Estimator_RAI": mle_rai,
+                "Max_Likelihood_Estimator_NMI": mle_nmi
                 }
     master_results = master_results.append(res_dict, ignore_index=True)
 
@@ -323,6 +377,11 @@ print(master_results)
 
 master_results.plot.scatter(
     'X', 'Population_Vector_F1', title='Population Vector')
+plt.show()
+
+
+master_results.plot.scatter(
+    'X', 'Max_Likelihood_Estimator_F1', title='Max Likelihood Estimator')
 plt.show()
 
 

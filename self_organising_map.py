@@ -4,6 +4,7 @@ import simpsom as sps
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 import matplotlib.pyplot as plt
+import matplotlib
 from mrmr import mrmr_classif
 from tqdm import tqdm
 from sklearn.feature_selection import VarianceThreshold
@@ -153,28 +154,35 @@ if __name__ == "__main__":
     # TODO: Also exponent the values to produce a greater variance?
     # Let's try Z-score normalization first, then rescale
     var_scaler = StandardScaler()
-    feature_scaler = MinMaxScaler(copy=True, feature_range=(50, 2000))
-    data_norm = feature_scaler.fit_transform(
-        var_scaler.fit_transform(data_smote))
+    data_norm = var_scaler.fit_transform(data_smote)
 
-    for i, patient in tqdm(enumerate(data_norm)):
+    for i in tqdm(range(len(data_norm))):
         # Draw SOM per patient,
         # encoding their feature expression values as the node_sizes
+        size_scaler = MinMaxScaler(copy=True, feature_range=(50, 2000))
+        rotation_scaler = MinMaxScaler(copy=True, feature_range=(0, 180))
+        data_size = size_scaler.fit_transform(data_norm)
+        data_rotation = rotation_scaler.fit_transform(data_norm)
+
         G = nx.chvatal_graph()
         ax = plt.gca()
         plt.cla()
         # iterate plotting each feature so we can customise its marker
         for j in range(len(selected_features)):
+            marker = matplotlib.markers.MarkerStyle(
+                marker='d').rotated(deg=data_rotation[i][j])
             nx.draw_networkx_nodes(G,
                                    [node_positions[j]],
                                    nodelist=[0],
                                    node_color=[0, 0, 0],
                                    edgecolors=[0, 0, 0],
-                                   node_size=patient[j],
+                                   node_size=data_size[i][j],
                                    ax=ax,
                                    alpha=1,
                                    margins=0.25,
-                                   node_shape=(3, 0, int(patient[j] % 360)))
+                                   node_shape=marker)
+
+            # (3, 0, int(patient[j] % 180)
 
         plt.axis('off')
         plt.savefig(
