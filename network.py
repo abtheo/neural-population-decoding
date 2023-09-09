@@ -453,8 +453,8 @@ class Network():
         df_dict["Labels"] = labels
         df_dict["Predictions"] = predictions
 
-        df_dict["neuron_image_counts"] = neuron_image_counts
-        df_dict["neuron_label_counts"] = neuron_label_counts
+        # df_dict["neuron_image_counts"] = neuron_image_counts
+        # df_dict["neuron_label_counts"] = neuron_label_counts
 
         results_string = ""
         results_string += "Achieved an accuracy of {:.2f}%".format(

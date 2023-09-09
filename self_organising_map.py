@@ -17,10 +17,6 @@ from collections import Counter
 import xgboost as xgb
 import glob
 
-subtype = "BRCA"
-path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
-directory_path = f"patient_som_data\\{subtype}"
-
 
 def rgba_to_binary(image_path):
     # Open the RGBA image
@@ -38,7 +34,10 @@ def rgba_to_binary(image_path):
     return np.array(binary_image)
 
 
-if __name__ == "__main__":
+def generate_patient_soms(num_features):
+    subtype = "KIRC"
+    path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
+    directory_path = f"patient_som_data\\{subtype}"
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
@@ -53,6 +52,7 @@ if __name__ == "__main__":
     # Transpose data into (patients, features) for feature engineering
     data = df.drop("OMIC_ID", axis=1)[:-1].T
 
+    print(len(target.values) - sum(target.values), sum(target.values))
     # Variance thresholding
     threshold_n = 0.8
     sel = VarianceThreshold(threshold=(threshold_n * (1 - threshold_n)))
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
     data.columns = range(data.shape[1])
     # MRMR feature selection
-    K = 20
+
     # selected_features = mrmr_classif(data, target, K=K)
 
     # old_shape = data.shape  # just for printing
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
                             objective='binary:logistic')
     clf.fit(data, target)
-    selected_features = (-clf.feature_importances_).argsort()[:K]
+    selected_features = (-clf.feature_importances_).argsort()[:num_features]
 
     # selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
@@ -201,3 +201,7 @@ if __name__ == "__main__":
     image_array_stack = np.stack(output, axis=0)
     print(image_array_stack.shape)
     np.save(f"{directory_path}/SOM_data", image_array_stack)
+
+
+if __name__ == "__main__":
+    generate_patient_soms(20)
