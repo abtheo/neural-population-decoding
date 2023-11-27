@@ -49,10 +49,13 @@ def generate_patient_soms(num_features):
 
         Then perform Minimum Redundancy Maximum Relevance (mRMR)
     """
+    # Single omic
+    # data = df[df["OMIC_ID"].str.contains(
+    #     "cg")][:-1].drop("OMIC_ID", axis=1).T  # "hsa-mir", "cg"
+
     # Transpose data into (patients, features) for feature engineering
     data = df.drop("OMIC_ID", axis=1)[:-1].T
 
-    print(len(target.values) - sum(target.values), sum(target.values))
     # Variance thresholding
     threshold_n = 0.8
     sel = VarianceThreshold(threshold=(threshold_n * (1 - threshold_n)))
@@ -64,7 +67,11 @@ def generate_patient_soms(num_features):
     data.columns = range(data.shape[1])
     # MRMR feature selection
 
-    # selected_features = mrmr_classif(data, target, K=K)
+    # data.reset_index(inplace=True, drop=True)
+    # mrmr = mrmr_classif(data, target, K=num_features, return_scores=True)
+    # selected_features = mrmr[0]
+    # print("Feature relevances: ", mrmr[1])
+    # print("Feature reduncancies: ", mrmr[2])
 
     # old_shape = data.shape  # just for printing
     # data = data[selected_features]
@@ -73,15 +80,21 @@ def generate_patient_soms(num_features):
     clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
                             objective='binary:logistic')
     clf.fit(data, target)
-    selected_features = (-clf.feature_importances_).argsort()[:num_features]
+    selected_features = (-clf.feature_importances_).argsort()[
+        :num_features]
 
+    # for BRCA!
+    # selected_features = [0,   626,  1267,  1987,  2238,  2503,  2594,  4491,  5010,
+    #                      6091,  6756,  7717,  7973,  8188, 10034, 10626, 11001, 11002,
+    #                      11004, 11005, 11006, 11197, 11359, 11790, 12325, 12621, 13441,
+    #                      14452]
     # selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
 
     old_shape = data.shape  # just for printing
     data = data[selected_features]
     print(
-        f"MRMR + XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+        f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
     data_T = data.T
@@ -121,28 +134,30 @@ def generate_patient_soms(num_features):
     # plt.show()
     # print("POS = ", node_positions)
     # plt.savefig('Template.png', bbox_inches='tight', dpi=72)
+    """
+        Okay, so the point of all that was to determine the node_positions.
+        The graph we just drew is only a visual representation of the positions,
+        but the sizes and shapes are an arbitrary constant.
 
-    # Okay, so the point of all that was to determine the node_positions.
-    # The graph we just drew is only a visual representation of the positions,
-    # but the sizes are an arbitrary constant.
+        Now, using the node_positions, we take each patient
+        and use their values of the selected_features
+        to determine the node_sizes.
+        However, we first need to normalise the *features* into a range.
 
-    # Now, using the node_positions, we take each patient
-    # and use their values of the selected_features
-    # to determine the node_sizes.
-    # However, we first need to normalise the *features* into a range.
-
-    # Actually, here is where we should perform SMOTE.
-    # We also need some way to remember
-    # which data is synthetic and which is the original,
-    # so that we can do testing on only original data.
-    oversample = SMOTE(sampling_strategy=1)
+        Actually, here is where we should perform SMOTE.
+        We also need some way to remember
+        which data is synthetic and which is the original,
+        so that we can do testing on only original data.
+    """
+    oversample = SMOTE(sampling_strategy=0.33)
     data_smote, target_smote = oversample.fit_resample(data, target)
 
-    is_original = [np.any(np.all(data == d, axis=1))
-                   for d in data_smote.values]
-    # is_original = [True for i in range(len(target))]
+    is_original = np.concatenate(
+        ([True] * len(target), [False] * (len(target_smote) - len(target))))
+
     # First clear out old files
-    # input(f"WARNING: Deleteing all files in directory {directory_path}. Continue?")
+    input(
+        f"WARNING: Deleteing all files in directory {directory_path}. Continue?")
 
     files = glob.glob(f"{directory_path}/*")
     for f in files:
@@ -151,8 +166,6 @@ def generate_patient_soms(num_features):
     np.save(f"{directory_path}/original.npy", is_original)
     np.save(f"{directory_path}/target.npy", target_smote)
 
-    # TODO: Also exponent the values to produce a greater variance?
-    # Let's try Z-score normalization first, then rescale
     var_scaler = StandardScaler()
     data_norm = var_scaler.fit_transform(data_smote)
 

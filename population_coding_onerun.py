@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics.cluster import adjusted_rand_score, normalized_mutual_info_score
-from sklearn.metrics import accuracy_score
 # from sklearn.linear_model import LogisticRegression
 from logistic_regression import LogisticRegression
 from sklearn.metrics import f1_score
@@ -52,7 +51,7 @@ def population_vector_decoder(fold):
     for l in range(len(fold['neuron_label_counts'])):
         neuron_label_dict[l] = np.argmax(fold['neuron_label_counts'][l])
 
-    # Vector sum
+    # Vector sum... is what we were doing already.
     predictions = []
     for spike_counts in fold['neuron_image_counts']:
 
@@ -175,22 +174,20 @@ def neuron_counts(fold):
 
     num_z = len(neuron_label_dict) - sum(neuron_label_dict.values())
     num_o = sum(neuron_label_dict.values())
-    ratio = min(num_z, num_o)/max(num_z, num_o)
-    # print("ZERO NEURONS: ", num_z)
-    # print("ONE NEURONS: ", num_o)
-    # print("RATIO OF MINORTY:MAJORITY = ", ratio)
-    return ratio
+    print("ZERO NEURONS: ", num_z)
+    print("ONE NEURONS: ", num_o)
+    print("RATIO OF MINORTY:MAJORITY = ", min(num_z, num_o)/max(num_z, num_o))
 
 
 def logistic_regression(fold):
 
     # Create a Logistic Regression model
     model = LogisticRegression()
+    model.bias = fold["LogRegBias"]
+    model.weights = fix_string_to_numpy(fold["LogRegWeights"])
     # model.fit(fold['neuron_image_counts'], fold['Labels'])
-    model.bias = np.array(fold['LogRegBias'], dtype=np.int64)
-    model.weights = fix_string_to_numpy(fold['LogRegWeights'])
-
-    return model.predict(np.array(fold['neuron_image_counts'], dtype=np.int64))
+    preds = model.predict(fold['neuron_image_counts'])
+    return preds
 
 
 # Likelihood function (negative log-likelihood) for Poisson distribution
@@ -229,8 +226,8 @@ def calc_metrics(ypred, ytrue):
     rai = adjusted_rand_score(ytrue, ypred)
     nmi = normalized_mutual_info_score(ytrue, ypred)
     recall = 0  # recall_score(ytrue, ypred)
-    f1 = f1_score(np.array(ytrue, dtype=np.int64), ypred)
-    # print(accuracy_score(ytrue, ypred))
+    f1 = f1_score(ytrue, ypred)
+
     return rai, nmi, recall, f1
 
 
@@ -262,8 +259,7 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
     scatter_pts = scatter_pts.reset_index(drop=True)
 
     # X = np.concatenate(([0.05]*4, [0.33]*4, [0.66]*4, [1]*4))
-    # X = [0.05, 0.33, 0.66, 1.0]
-    X = [0.05, 0.33, 0.66, 1.0]
+    X = [1.0]
 
     ax1.bar(X, df[label].loc[df['Fold'] == 'ALL'].to_numpy(),
             color='red',
@@ -272,10 +268,6 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
 
     # Set the labels and title for ax1
     ax1.set_xlabel('α ratio')
-    # ax1.set_xlabel('Omic Type(s)')
-    ax1.set_xticks(X)
-    # x_tick_labels = ["Multi-Omic", "Gene", "miRNA", "Methyl"]
-    # ax1.set_xticklabels(X)
     ax1.set_ylabel(tidy_label if tidy_label else label)
 
     # Create a second y-axis for the bar chart
@@ -293,7 +285,7 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
     # ax2.tick_params(axis='y', labelcolor='red')
     ticks = np.linspace(0, round(max(scatter_pts), 2), 11)
     ax1.set_yticks(ticks)
-    ax2.set_yticks(ticks)
+    # ax2.set_yticks(ticks)
 
     align_yaxis(ax1, 0, ax2, 0)
     ax2.get_yaxis().set_visible(False)
@@ -304,156 +296,71 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
 
 subtype = "kirc"
 master_results = pd.DataFrame()
-neur_counts = []
-smote_datasets = [f"{subtype}_0", f"{subtype}_33",
-                  f"{subtype}_66", f"{subtype}_100"]
-for ds in smote_datasets:
-    df = pd.read_csv(
-        f"./alphas2/{ds}smote_results_df.csv", index_col=[0])
-    df.reset_index(drop=True, inplace=True)
 
-    neuron_label_counts = np.load(
-        f"./alphas2/{ds}smote_neuron_label_counts.npy", allow_pickle=True)
+df = pd.read_csv(
+    f"oneres/logreg_results_df.csv", index_col=[0])
+df.reset_index(drop=True, inplace=True)
 
-    neuron_image_counts = np.load(
-        f"./alphas2/{ds}smote_neuron_image_counts.npy", allow_pickle=True)
-    labels = np.load(
-        f"./alphas2/{ds}smote_labels.npy", allow_pickle=True)
+neuron_label_counts = np.load(
+    f"oneres/logreg_neuron_label_counts.npy", allow_pickle=True)
 
-# datasets = ["logreg", "omic1", "omic2", "omic3"]
-# for ds in datasets:
-#     df = pd.read_csv(
-#         f"./oneres/{ds}_results_df.csv", index_col=[0])
-#     df.reset_index(drop=True, inplace=True)
+neuron_image_counts = np.load(
+    f"oneres/logreg_neuron_image_counts.npy", allow_pickle=True)
+labels = np.load(
+    f"oneres/logreg_labels.npy", allow_pickle=True)
 
-#     neuron_label_counts = np.load(
-#         f"./oneres/{ds}_neuron_label_counts.npy", allow_pickle=True)
+pop_vector_predictions = []
+neuron_avg_predictions = []
+sample_avg_predictions = []
+firing_avg_predictions = []
+max_neuron_predictions = []
+avg_max_neuron_predictions = []
+mle_predictions = []
+logistic_predictions = []
+labelZ = []
 
-#     neuron_image_counts = np.load(
-#         f"./oneres/{ds}_neuron_image_counts.npy", allow_pickle=True)
-#     labels = np.load(
-#         f"./oneres/{ds}_labels.npy", allow_pickle=True)
+for kfold in range(df.shape[0]):
+    fold = df.iloc[kfold].copy()
+    fold['neuron_image_counts'] = neuron_image_counts[kfold]
+    fold['neuron_label_counts'] = neuron_label_counts[kfold]
+    fold['Labels'] = labels[kfold]
 
-    pop_vector_predictions = []
-    neuron_avg_predictions = []
-    sample_avg_predictions = []
-    firing_avg_predictions = []
-    max_neuron_predictions = []
-    avg_max_neuron_predictions = []
-    mle_predictions = []
-    logistic_predictions = []
-    labelZ = []
+    # neuron_counts(fold)
+    # Calculate predictions via each form of population coding
+    pop_vec = population_vector_decoder(fold)
+    avg_neur = average_neuron_classes(fold)
+    samp_avg = sample_average(fold)
+    fire_avg = average_firing_rate(fold)
+    max_neur = max_neuron(fold)
+    avg_max_neur = average_max_neuron(fold)
+    mle = maximum_likelihood_estimator(fold)
+    logistic_pred = logistic_regression(fold)
 
-    for kfold in range(df.shape[0]):
-        fold = df.iloc[kfold].copy()
-        fold['neuron_image_counts'] = neuron_image_counts[kfold]
-        fold['neuron_label_counts'] = neuron_label_counts[kfold]
-        fold['Labels'] = labels[kfold]
+    # Save predictions for overall dataset evaluation
+    pop_vector_predictions.append(pop_vec)
+    neuron_avg_predictions.append(avg_neur)
+    sample_avg_predictions.append(samp_avg)
+    firing_avg_predictions.append(fire_avg)
+    max_neuron_predictions.append(max_neur)
+    avg_max_neuron_predictions.append(avg_max_neur)
+    mle_predictions.append(mle)
+    logistic_predictions.append(logistic_pred)
+    labelZ.append(fold['Labels'])
 
-        neur_counts.append(neuron_counts(fold))
-        # Calculate predictions via each form of population coding
-        pop_vec = population_vector_decoder(fold)
-        avg_neur = average_neuron_classes(fold)
-        samp_avg = sample_average(fold)
-        fire_avg = average_firing_rate(fold)
-        max_neur = max_neuron(fold)
-        avg_max_neur = average_max_neuron(fold)
-        # mle = maximum_likelihood_estimator(fold)
-        logistic_pred = logistic_regression(fold)
-
-        # Save predictions for overall dataset evaluation
-        pop_vector_predictions.append(pop_vec)
-        neuron_avg_predictions.append(avg_neur)
-        sample_avg_predictions.append(samp_avg)
-        firing_avg_predictions.append(fire_avg)
-        max_neuron_predictions.append(max_neur)
-        avg_max_neuron_predictions.append(avg_max_neur)
-        # mle_predictions.append(mle)
-        mle_predictions.append(avg_max_neur)
-        logistic_predictions.append(logistic_pred)
-        labelZ.append(fold['Labels'])
-
-        # Calculate metrics per fold too
-        pop_rai, pop_nmi, _, pop_f1 = calc_metrics(pop_vec, fold['Labels'])
-        an_rai, an_nmi, _, an_f1 = calc_metrics(avg_neur, fold['Labels'])
-        sm_rai, sm_nmi, _, sm_f1 = calc_metrics(samp_avg, fold['Labels'])
-        fa_rai, fa_nmi, _, fa_f1 = calc_metrics(fire_avg, fold['Labels'])
-        mn_rai, mn_nmi, _, mn_f1 = calc_metrics(max_neur, fold['Labels'])
-        amn_rai, amn_nmi, _, amn_f1 = calc_metrics(
-            avg_max_neur, fold['Labels'])
-        mle_rai, mle_nmi, _, mle_f1 = calc_metrics(
-            avg_max_neur, fold['Labels'])
-        logistic_rai, logistic_nmi, _, logistic_f1 = calc_metrics(
-            logistic_pred, fold['Labels'])
-
-        res_dict = {"Dataset": ds,
-                    "Fold": kfold,
-
-                    "Population_Vector_F1":  pop_f1,
-                    "Population_Vector_RAI": pop_rai,
-                    "Population_Vector_NMI": pop_nmi,
-
-                    "Class_Average_Neuron_F1":  an_f1,
-                    "Class_Average_Neuron_RAI": an_rai,
-                    "Class_Average_Neuron_NMI": an_nmi,
-
-                    "Sample_Average_F1":  sm_f1,
-                    "Sample_Average_RAI": sm_rai,
-                    "Sample_Average_NMI": sm_nmi,
-
-                    "Firing_Average_F1":  fa_f1,
-                    "Firing_Average_RAI": fa_rai,
-                    "Firing_Average_NMI": fa_nmi,
-
-                    "Max_Neuron_F1":  mn_f1,
-                    "Max_Neuron_RAI": mn_rai,
-                    "Max_Neuron_NMI": mn_nmi,
-
-                    "Average_Max_Neuron_F1":  amn_f1,
-                    "Average_Max_Neuron_RAI": amn_rai,
-                    "Average_Max_Neuron_NMI": amn_nmi,
-
-                    "Max_Likelihood_Estimator_F1":  mle_f1,
-                    "Max_Likelihood_Estimator_RAI": mle_rai,
-                    "Max_Likelihood_Estimator_NMI": mle_nmi,
-
-                    "Logistic_Regression_F1":  logistic_f1,
-                    "Logistic_Regression_RAI": logistic_rai,
-                    "Logistic_Regression_NMI": logistic_nmi
-                    }
-        master_results = master_results.append(res_dict, ignore_index=True)
-
-    # Concatenate K-fold predictions into overall dataset
-    pop_vector_predictions = np.concatenate(pop_vector_predictions)
-    sample_avg_predictions = np.concatenate(sample_avg_predictions)
-    firing_avg_predictions = np.concatenate(firing_avg_predictions)
-    neuron_avg_predictions = np.concatenate(neuron_avg_predictions)
-    max_neuron_predictions = np.concatenate(max_neuron_predictions)
-    avg_max_neuron_predictions = np.concatenate(avg_max_neuron_predictions)
-    mle_predictions = np.concatenate(mle_predictions)
-    logistic_predictions = np.concatenate(logistic_predictions)
-    labelZ = np.concatenate(labelZ)
-
-    # Evaluate overall predictions
-    pop_rai, pop_nmi, _, pop_f1 = calc_metrics(
-        pop_vector_predictions, labelZ)
-    an_rai, an_nmi, _, an_f1 = calc_metrics(
-        neuron_avg_predictions, labelZ)
-    sm_rai, sm_nmi, _, sm_f1 = calc_metrics(
-        sample_avg_predictions, labelZ)
-    fa_rai, fa_nmi, _, fa_f1 = calc_metrics(
-        firing_avg_predictions, labelZ)
-    mn_rai, mn_nmi, _, mn_f1 = calc_metrics(
-        max_neuron_predictions, labelZ)
+    # Calculate metrics per fold too
+    pop_rai, pop_nmi, _, pop_f1 = calc_metrics(pop_vec, fold['Labels'])
+    an_rai, an_nmi, _, an_f1 = calc_metrics(avg_neur, fold['Labels'])
+    sm_rai, sm_nmi, _, sm_f1 = calc_metrics(samp_avg, fold['Labels'])
+    fa_rai, fa_nmi, _, fa_f1 = calc_metrics(fire_avg, fold['Labels'])
+    mn_rai, mn_nmi, _, mn_f1 = calc_metrics(max_neur, fold['Labels'])
     amn_rai, amn_nmi, _, amn_f1 = calc_metrics(
-        avg_max_neuron_predictions, labelZ)
-    mle_rai, mle_nmi, _, mle_f1 = calc_metrics(mle_predictions, labelZ)
+        avg_max_neur, fold['Labels'])
+    mle_rai, mle_nmi, _, mle_f1 = calc_metrics(mle, fold['Labels'])
     logistic_rai, logistic_nmi, _, logistic_f1 = calc_metrics(
-        logistic_predictions, labelZ)
+        logistic_pred, fold['Labels'])
 
-    # Add to results
-    res_dict = {"Dataset": ds,
-                "Fold": "ALL",
+    res_dict = {"Dataset": 1,
+                "Fold": kfold,
 
                 "Population_Vector_F1":  pop_f1,
                 "Population_Vector_RAI": pop_rai,
@@ -489,52 +396,103 @@ for ds in smote_datasets:
                 }
     master_results = master_results.append(res_dict, ignore_index=True)
 
-# master_results["X"] = np.concatenate(([0.05]*5, [33]*5, [66]*5, [100]*5))
-# master_results["X"] = np.concatenate(([0.05]*5, [33]*5, [66]*5))
+# Concatenate K-fold predictions into overall dataset
+pop_vector_predictions = np.concatenate(pop_vector_predictions)
+sample_avg_predictions = np.concatenate(sample_avg_predictions)
+firing_avg_predictions = np.concatenate(firing_avg_predictions)
+neuron_avg_predictions = np.concatenate(neuron_avg_predictions)
+max_neuron_predictions = np.concatenate(max_neuron_predictions)
+avg_max_neuron_predictions = np.concatenate(avg_max_neuron_predictions)
+mle_predictions = np.concatenate(mle_predictions)
+logistic_predictions = np.concatenate(logistic_predictions)
+labelZ = np.concatenate(labelZ)
+
+# Evaluate overall predictions
+pop_rai, pop_nmi, _, pop_f1 = calc_metrics(
+    pop_vector_predictions, labelZ)
+an_rai, an_nmi, _, an_f1 = calc_metrics(
+    neuron_avg_predictions, labelZ)
+sm_rai, sm_nmi, _, sm_f1 = calc_metrics(
+    sample_avg_predictions, labelZ)
+fa_rai, fa_nmi, _, fa_f1 = calc_metrics(
+    firing_avg_predictions, labelZ)
+mn_rai, mn_nmi, _, mn_f1 = calc_metrics(
+    max_neuron_predictions, labelZ)
+amn_rai, amn_nmi, _, amn_f1 = calc_metrics(
+    avg_max_neuron_predictions, labelZ)
+mle_rai, mle_nmi, _, mle_f1 = calc_metrics(mle_predictions, labelZ)
+logistic_rai, logistic_nmi, _, logistic_f1 = calc_metrics(
+    logistic_predictions, labelZ)
+
+# Add to results
+res_dict = {"Dataset": 1,
+            "Fold": "ALL",
+
+            "Population_Vector_F1":  pop_f1,
+            "Population_Vector_RAI": pop_rai,
+            "Population_Vector_NMI": pop_nmi,
+
+            "Class_Average_Neuron_F1":  an_f1,
+            "Class_Average_Neuron_RAI": an_rai,
+            "Class_Average_Neuron_NMI": an_nmi,
+
+            "Sample_Average_F1":  sm_f1,
+            "Sample_Average_RAI": sm_rai,
+            "Sample_Average_NMI": sm_nmi,
+
+            "Firing_Average_F1":  fa_f1,
+            "Firing_Average_RAI": fa_rai,
+            "Firing_Average_NMI": fa_nmi,
+
+            "Max_Neuron_F1":  mn_f1,
+            "Max_Neuron_RAI": mn_rai,
+            "Max_Neuron_NMI": mn_nmi,
+
+            "Average_Max_Neuron_F1":  amn_f1,
+            "Average_Max_Neuron_RAI": amn_rai,
+            "Average_Max_Neuron_NMI": amn_nmi,
+
+            "Max_Likelihood_Estimator_F1":  mle_f1,
+            "Max_Likelihood_Estimator_RAI": mle_rai,
+            "Max_Likelihood_Estimator_NMI": mle_nmi,
+
+            "Logistic_Regression_F1":  logistic_f1,
+            "Logistic_Regression_RAI": logistic_rai,
+            "Logistic_Regression_NMI": logistic_nmi
+
+            }
+master_results = master_results.append(res_dict, ignore_index=True)
+
+# np.concatenate(([0.05]*5, [33]*5, [66]*5, [100]*5))
+master_results["X"] = [0.05]*5
 # print(master_results)
-
-# plot_scatter_bar(master_results, 'Max_Neuron_F1',
-#                  f'Max Neuron Results for Omics', 'F1 Score')
-
-plot_scatter_bar(master_results, 'Population_Vector_F1',
-                 f'Population Vector', 'F1 Score')  # Population Vector Results for {subtype.upper()}
-
-plot_scatter_bar(master_results, 'Class_Average_Neuron_NMI',
-                 f'Class Average', 'F1 Score')
-
-plot_scatter_bar(master_results, 'Firing_Average_NMI',
-                 f'Firing Average', 'F1 Score')
+# print(master_results[["Logistic_Regression_F1",
+#       "Logistic_Regression_RAI", "Logistic_Regression_NMI"]])
 
 plot_scatter_bar(master_results, 'Logistic_Regression_F1',
-                 f'Logistic Regression Results for KIRC', 'F1 Score')
+                 f'Logistic_Regression_F1 Results for {subtype.upper()}', 'F1 Score')
+
+plot_scatter_bar(master_results, 'Population_Vector_F1',
+                 f'Population Vector Results for {subtype.upper()}', 'F1 Score')
+
+plot_scatter_bar(master_results, 'Class_Average_Neuron_F1',
+                 f'Class_Average_Neuron_F1 Results for {subtype.upper()}', 'F1 Score')
+
+plot_scatter_bar(master_results, 'Firing_Average_F1',
+                 f'Firing_Average_F1 Results for {subtype.upper()}', 'F1 Score')
+
 # plot_scatter_bar(master_results, 'Population_Vector_F1',
 #                  f'Population Vector Results for {subtype.upper()}', 'F1 Score')
 
-# mean_alphas = [np.mean(neur_counts[0:4]), np.mean(neur_counts[4:8]), np.mean(
-#     neur_counts[8:12]), np.mean(neur_counts[12:16])]
 
-# alphas = np.concatenate(([0.05]*4, [0.33]*4, [0.66]*4, [1]*4))
+df['neuron_image_counts']  # folds, X_test, neurons
+df['neuron_label_counts']  # folds, neurons, 2
 
-# print("α CORRELATION: ", np.corrcoef(alphas, neur_counts))
-# diffs = np.array([a - neur_counts[i] for i, a in enumerate(alphas)])
-# diffs4 = diffs.reshape((4, 4))
-
-# vals = np.array(neur_counts).reshape((4, 4))
-
-# figure, ax = plt.subplots()
-
-# heatmap = plt.imshow(diffs4, cmap='OrRd', vmin=0, vmax=0.5)
-
-# for (j, i), label in np.ndenumerate(vals):
-#     ax.text(i, j, round(label, 3), ha='center', va='center')
-
-# ax.set_xticks([0, 1, 2, 3])
-# ax.set_xticklabels([1, 2, 3, 4])
-# ax.set_yticks([0, 1, 2, 3])
-# ax.set_yticklabels([0.05, 0.33, 0.66, 1.0])
-# ax.set_xlabel('K-fold')
-# ax.set_ylabel('Training set α ratio')
-
-# plt.colorbar(heatmap, label="Difference in α Ratio")
-# plt.title("α Ratio of Neuron Label Assignments (KIRC)")
-# plt.show()
+# we have to do this in the testing loop,
+# can't reverse engineer the sums in the label counts
+for i in range(len(fold)):
+    fold = df.iloc[kfold].copy()
+    # pour everything into a bucket
+    fold['neuron_image_counts'] = neuron_image_counts[kfold]
+    fold['neuron_label_counts'] = neuron_label_counts[kfold]
+    fold['Labels'] = labels[kfold]

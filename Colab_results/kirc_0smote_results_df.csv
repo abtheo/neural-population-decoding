@@ -1,5 +1,0 @@
-,Count,Accurary,RAI,NMI,True Positive,True Negative,False Positive,False Negative,Train_0_count,Train_1_count
-0,72,94.44444444444444,0.0,0.0,0,68,0,4,197,20
-0,72,91.66666666666667,0.0,0.0,0,66,0,6,199,18
-0,72,93.05555555555556,0.0,0.0,0,67,0,5,198,19
-0,72,87.5,0.0,0.0,0,63,0,9,202,15

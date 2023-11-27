@@ -11,9 +11,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob
+from logistic_regression import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
 import xgboost as xgb
 
-subtype = "BRCA"
+subtype = "KIRC"
 
 
 def store_spikes(X, data_handler, clear=False):
@@ -44,6 +46,7 @@ def run_hierarchical():
     P.topdown_enabled = True
     P.K_h = 32
     P.K_o = 64
+    # P.hertz_o = P.hertz_o / 100
 
     data_handler = DataHandler(P)
 
@@ -108,6 +111,10 @@ def run_hierarchical():
 
         # TRAIN NETWORK
         neuron_image_counts = np.zeros((X_train.shape[0], network.K_o))
+        # models = [LogisticRegression(solver='saga', max_iter=1)
+        #           for n in range(network.K_o)]
+
+        clf = LogisticRegression()
         for epoch in range(2):
             index_train = 0
             # The number of times each neuron spiked for each label
@@ -150,6 +157,10 @@ def run_hierarchical():
                     neuron_label_counts[:,
                                         label] += network.n_spikes_since_reset_o
 
+                    # train an online logistic regression model for each neuron
+                    clf.partial_fit(network.n_spikes_since_reset_o.reshape(1, -1), [
+                                    label])
+
                     neuron_first_spike_counts[first_spike_index, label] += 1
 
                     neuron_image_counts[index_train] = network.n_spikes_since_reset_o
@@ -160,10 +171,6 @@ def run_hierarchical():
                         (network.s_os, network.s_os, network.K_h), dtype=np.uint16)
                     network.n_spikes_since_reset_o = np.zeros(
                         network.K_o, dtype=np.uint16)
-
-        # clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
-        #                         objective='binary:logistic')
-        # clf.fit(neuron_image_counts, labels_train)
 
         # TESTING
         index_im_all = 0
@@ -220,6 +227,12 @@ def run_hierarchical():
         results_df["Train_0_count"] = np.sum(labels_train == 0)
         results_df["Train_1_count"] = np.sum(labels_train == 1)
 
+        results_df["LogRegWeights"] = [clf.weights]
+        results_df["LogRegBias"] = clf.bias
+
+        # with open(f"./log_coefs/fold_{k}", 'wb') as file:
+        #     pickle.dump([clf.bias, clf.weights], file)
+
         if len(final_df) == 0:
             final_df = results_df
         else:
@@ -233,10 +246,13 @@ def run_hierarchical():
         test_labels_k.append(labels_test)
         # clf_predictions_k.append(predictions)
 
-    final_df.to_csv("./hyper_results/results_df.csv")
-    np.save("./neuron_label_counts.npy", np.array(n_labels_k, dtype=object))
-    np.save("./neuron_image_counts.npy", np.array(n_img_k, dtype=object))
-    np.save("./labels.npy", np.array(test_labels_k, dtype=object))
+    final_df.to_csv("alphas2/kirc_100smote_results_df.csv")
+    np.save("alphas2/kirc_100smote_neuron_label_counts.npy",
+            np.array(n_labels_k, dtype=object))
+    np.save("alphas2/kirc_100smote_neuron_image_counts.npy",
+            np.array(n_img_k, dtype=object))
+    np.save("alphas2/kirc_100smote_labels.npy",
+            np.array(test_labels_k, dtype=object))
     # np.save("./clf_predictions.npy", clf_predictions_k)
 
 

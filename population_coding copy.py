@@ -334,31 +334,34 @@ for ds in dsx:
 master_results["X"] = dsx
 print(master_results)
 
-master_results.plot.scatter(
-    'X', 'Population_Vector_RAI', title='Population Vector')
-plt.show()
+
+# master_results.plot.scatter('X', 'Max_Neuron_RAI', title='Max Neuron')
+# plt.show()
+# master_results.plot.scatter('X', 'Max_Neuron_F1', title='Max Neuron F1')
+# plt.show()
+
+# master_results.plot.scatter(
+#     'X', 'Population_Vector_RAI', title='Population Vector')
+# plt.show()
+
+
+# master_results.plot.scatter(
+#     'X', 'Max_Likelihood_Estimator_RAI', title='Max Likelihood Estimator')
+# plt.show()
 
 
 master_results.plot.scatter(
-    'X', 'Max_Likelihood_Estimator_RAI', title='Max Likelihood Estimator')
+    'X', 'Class_Average_Neuron_F1', title='Class Average Neuron')
 plt.show()
 
 
-master_results.plot.scatter(
-    'X', 'Class_Average_Neuron_RAI', title='Class Average Neuron')
+# master_results.plot.scatter('X', 'Sample_Average_RAI', title='Sample Average')
+# plt.show()
+
+master_results.plot.scatter('X', 'Firing_Average_F1', title='Firing Average')
 plt.show()
 
 
-master_results.plot.scatter('X', 'Sample_Average_RAI', title='Sample Average')
-plt.show()
-
-master_results.plot.scatter('X', 'Firing_Average_RAI', title='Firing Average')
-plt.show()
-
-
-master_results.plot.scatter('X', 'Max_Neuron_RAI', title='Max Neuron')
-plt.show()
-
-master_results.plot.scatter(
-    'X', 'Average_Max_Neuron_RAI', title='Average Max Neuron')
-plt.show()
+# master_results.plot.scatter(
+#     'X', 'Average_Max_Neuron_RAI', title='Average Max Neuron')
+# plt.show()
