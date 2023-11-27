@@ -1,7 +1,3 @@
-__author__ = "Otto van der Himst"
-__version__ = "1.0"
-__email__ = "otto.vanderhimst@ru.nl"
-
 import numpy as np
 import matplotlib.pyplot as plt
 import random

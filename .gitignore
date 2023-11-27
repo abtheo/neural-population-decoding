@@ -2,13 +2,9 @@ data
 \[00LF\] data
 \[01LF\] results
 patient_som_data
-patient_som_data_integration
-patient_som_data_smote
-patient_som_data_integration_smote
 
 *_results
 *_results/*
-Colab_results
 
 __pycache__
 .venv
