@@ -560,10 +560,10 @@ class Parameters():
 
             "ndt_run": "run-hierarchical_{:04d}/",
 
-            "save_weight_ims_h": True,
+            "save_weight_ims_h": False,
             "nd_weight_ims_h": "hidden/",
             "nft_weight_ims_h": "weights-h_t{:05d}_{}-{}_{:03d}.jpg",
-            "save_weight_ims_o": True,
+            "save_weight_ims_o": False,
             "nd_weight_ims_o": "output/",
             "nft_weight_ims_o": "weights-o_t{:05d}_{:03d}.jpg",
 
@@ -747,7 +747,7 @@ class Parameters():
 
             "ndt_run": "run-integration_{:04d}/",
 
-            "save_weight_ims": True,
+            "save_weight_ims": False,
             "nft_weight_ims": "weights_t{:05d}_{:03d}.jpg",
 
             "save_weights": False,

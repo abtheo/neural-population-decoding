@@ -18,7 +18,7 @@ from scipy.stats import poisson
 
 def sample_average(fold):
     """
-        Average spikes over num samples in train set
+        Average spikes over number of samples in training set
     """
     # Determine for each neuron to which label it most strongly responds
     neuron_label_dict = dict()
@@ -309,16 +309,16 @@ smote_datasets = [f"{subtype}_0", f"{subtype}_33",
                   f"{subtype}_66", f"{subtype}_100"]
 for ds in smote_datasets:
     df = pd.read_csv(
-        f"./alphas2/{ds}smote_results_df.csv", index_col=[0])
+        f"./{ds}smote_results_df.csv", index_col=[0])
     df.reset_index(drop=True, inplace=True)
 
     neuron_label_counts = np.load(
-        f"./alphas2/{ds}smote_neuron_label_counts.npy", allow_pickle=True)
+        f"./{ds}smote_neuron_label_counts.npy", allow_pickle=True)
 
     neuron_image_counts = np.load(
-        f"./alphas2/{ds}smote_neuron_image_counts.npy", allow_pickle=True)
+        f"./{ds}smote_neuron_image_counts.npy", allow_pickle=True)
     labels = np.load(
-        f"./alphas2/{ds}smote_labels.npy", allow_pickle=True)
+        f"./{ds}smote_labels.npy", allow_pickle=True)
 
 # datasets = ["logreg", "omic1", "omic2", "omic3"]
 # for ds in datasets:
@@ -522,6 +522,9 @@ plot_scatter_bar(master_results, 'Logistic_Regression_F1',
 # vals = np.array(neur_counts).reshape((4, 4))
 
 # figure, ax = plt.subplots()
+
+
+# Plot heatmap of α ratios:
 
 # heatmap = plt.imshow(diffs4, cmap='OrRd', vmin=0, vmax=0.5)
 

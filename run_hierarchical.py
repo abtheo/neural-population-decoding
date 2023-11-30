@@ -111,8 +111,6 @@ def run_hierarchical():
 
         # TRAIN NETWORK
         neuron_image_counts = np.zeros((X_train.shape[0], network.K_o))
-        # models = [LogisticRegression(solver='saga', max_iter=1)
-        #           for n in range(network.K_o)]
 
         clf = LogisticRegression()
         for epoch in range(2):
@@ -246,12 +244,12 @@ def run_hierarchical():
         test_labels_k.append(labels_test)
         # clf_predictions_k.append(predictions)
 
-    final_df.to_csv("alphas2/kirc_100smote_results_df.csv")
-    np.save("alphas2/kirc_100smote_neuron_label_counts.npy",
+    final_df.to_csv("results_df.csv")
+    np.save("neuron_label_counts.npy",
             np.array(n_labels_k, dtype=object))
-    np.save("alphas2/kirc_100smote_neuron_image_counts.npy",
+    np.save("neuron_image_counts.npy",
             np.array(n_img_k, dtype=object))
-    np.save("alphas2/kirc_100smote_labels.npy",
+    np.save("smote_labels.npy",
             np.array(test_labels_k, dtype=object))
     # np.save("./clf_predictions.npy", clf_predictions_k)
 

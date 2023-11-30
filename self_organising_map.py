@@ -47,7 +47,7 @@ def generate_patient_soms(num_features):
         iSOM-GSN:  A filtering step was applied by removing those features whose variance was below 0.2%.
         As a result, features with at least 80% zero values were removed, reducing the number of features to 16 000.
 
-        Then perform Minimum Redundancy Maximum Relevance (mRMR)
+        Then perform Minimum Redundancy Maximum Relevance (mRMR) feature selection.
     """
     # Single omic
     # data = df[df["OMIC_ID"].str.contains(
@@ -65,36 +65,32 @@ def generate_patient_soms(num_features):
     print(
         f"Variance thresholding reduced number of omic features from {old_shape[1]} down to {data.shape[1]}.")
     data.columns = range(data.shape[1])
+
     # MRMR feature selection
+    data.reset_index(inplace=True, drop=True)
+    mrmr = mrmr_classif(data, target, K=num_features, return_scores=True)
+    selected_features = mrmr[0]
+    print("Feature relevances: ", mrmr[1])
+    print("Feature reduncancies: ", mrmr[2])
+    old_shape = data.shape
+    data = data[selected_features]
+    print(
+        f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
-    # data.reset_index(inplace=True, drop=True)
-    # mrmr = mrmr_classif(data, target, K=num_features, return_scores=True)
-    # selected_features = mrmr[0]
-    # print("Feature relevances: ", mrmr[1])
-    # print("Feature reduncancies: ", mrmr[2])
+    # XGBoost Feature Selection
+    # clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
+    #                         objective='binary:logistic')
+    # clf.fit(data, target)
+    # selected_features_xgb = (-clf.feature_importances_).argsort()[
+    #     :num_features]
 
-    # old_shape = data.shape  # just for printing
-    # data = data[selected_features]
-    # print(
-    #     f"Minimum Redundancy Maximum Relevance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
-    clf = xgb.XGBClassifier(n_estimators=20, max_depth=3,
-                            objective='binary:logistic')
-    clf.fit(data, target)
-    selected_features = (-clf.feature_importances_).argsort()[
-        :num_features]
-
-    # for BRCA!
-    # selected_features = [0,   626,  1267,  1987,  2238,  2503,  2594,  4491,  5010,
-    #                      6091,  6756,  7717,  7973,  8188, 10034, 10626, 11001, 11002,
-    #                      11004, 11005, 11006, 11197, 11359, 11790, 12325, 12621, 13441,
-    #                      14452]
     # selected_features = np.union1d(selected_features, selected_features_xgb)
     # print("XGBOOST: ", selected_features)
 
-    old_shape = data.shape  # just for printing
-    data = data[selected_features]
-    print(
-        f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
+    # old_shape = data.shape
+    # data = data[selected_features]
+    # print(
+    #     f"XGBoost Feature Importance reduced number of omic features from {old_shape[1]} to {data.shape[1]}")
 
     # Transpose data back into (features, patients) for Self-Organising Map
     data_T = data.T
@@ -157,7 +153,7 @@ def generate_patient_soms(num_features):
 
     # First clear out old files
     input(
-        f"WARNING: Deleteing all files in directory {directory_path}. Continue?")
+        f"WARNING: Deleteing all files in directory {directory_path}. Press any key to continue.")
 
     files = glob.glob(f"{directory_path}/*")
     for f in files:
