@@ -36,8 +36,8 @@ def rgba_to_binary(image_path):
 
 def generate_patient_soms(num_features):
     subtype = "KIRC"
-    path = f"D:\\Thesis\\MDICC_data\\{subtype}\\multi_omic.csv"
-    directory_path = f"patient_som_data\\{subtype}"
+    path = f"./TCGA_data/{subtype}/multi_omic.csv"
+    directory_path = f"patient_som_data/{subtype}"
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
@@ -190,9 +190,6 @@ def generate_patient_soms(num_features):
                                    alpha=1,
                                    margins=0.25,
                                    node_shape=marker)
-
-            # (3, 0, int(patient[j] % 180)
-
         plt.axis('off')
         plt.savefig(
             f'{directory_path}/patient_{i}.png', bbox_inches='tight', dpi=36)
@@ -213,4 +210,4 @@ def generate_patient_soms(num_features):
 
 
 if __name__ == "__main__":
-    generate_patient_soms(20)
+    generate_patient_soms(11)

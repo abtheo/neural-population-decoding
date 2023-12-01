@@ -5,15 +5,11 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 import time
-from sklearn.model_selection import train_test_split
-from self_organising_map import generate_patient_soms
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import glob
 from logistic_regression import LogisticRegression
-from sklearn.naive_bayes import GaussianNB
-import xgboost as xgb
 
 subtype = "KIRC"
 
@@ -46,7 +42,6 @@ def run_hierarchical():
     P.topdown_enabled = True
     P.K_h = 32
     P.K_o = 64
-    # P.hertz_o = P.hertz_o / 100
 
     data_handler = DataHandler(P)
 
@@ -228,9 +223,6 @@ def run_hierarchical():
         results_df["LogRegWeights"] = [clf.weights]
         results_df["LogRegBias"] = clf.bias
 
-        # with open(f"./log_coefs/fold_{k}", 'wb') as file:
-        #     pickle.dump([clf.bias, clf.weights], file)
-
         if len(final_df) == 0:
             final_df = results_df
         else:
@@ -242,7 +234,6 @@ def run_hierarchical():
         n_labels_k.append(neuron_label_counts)
         n_img_k.append(neuron_image_counts)
         test_labels_k.append(labels_test)
-        # clf_predictions_k.append(predictions)
 
     final_df.to_csv("results_df.csv")
     np.save("neuron_label_counts.npy",
@@ -251,7 +242,6 @@ def run_hierarchical():
             np.array(n_img_k, dtype=object))
     np.save("smote_labels.npy",
             np.array(test_labels_k, dtype=object))
-    # np.save("./clf_predictions.npy", clf_predictions_k)
 
 
 if __name__ == "__main__":
