@@ -5,7 +5,7 @@ This is the code repository for the paper *Neural Population Decoding and Imbala
 
 
 ## 1)  `preprocessing.py`
-First, we run this script to merge the omics data from the TCGA dataset into a single CSV file per cancer subtype, named `multi_omic.csv`. An example is provided using the BRCA dataset.
+First, we run this script to merge the omics data from the TCGA dataset into a single CSV file per cancer subtype, named `multi_omic.csv`.
 
     .
     ├── ...                     # Repository root level
@@ -56,7 +56,7 @@ Secondly, we use the multi-omic patient data from `multi_omic.csv` to generate a
 
 ## References
 
-The data used in `TCGA_data` as an example for those running the code is sourced from The Cancer Genome Atlas, provided by National Cancer Institute. This dataset and more are available at https://www.cancer.gov/tcga
+The data used in `TCGA_data` sourced from The Cancer Genome Atlas, provided by National Cancer Institute. Datasets are available at https://www.cancer.gov/tcga
 
 The code for the Hierarchical Bayesian Network via Spiking Neural Network was originally forked from the implementation by Otto van der Himst for the paper *Bayesian Integration of Information Using Top-Down Modulated WTA Networks*, available at https://github.com/Grottoh/WTA-Network
 

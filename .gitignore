@@ -4,6 +4,8 @@
 \[00LF\] data
 \[01LF\] results
 patient_som_data
+/TCGA_data
+
 
 *_results
 *_results/*

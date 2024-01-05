@@ -302,7 +302,7 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
     plt.show()
 
 
-subtype = "kirc"
+subtype = "brca"
 master_results = pd.DataFrame()
 neur_counts = []
 smote_datasets = [f"{subtype}_0", f"{subtype}_33",
