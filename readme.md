@@ -2,9 +2,10 @@ Neural Population Decoding and Imbalanced Multi-Omic Datasets for Cancer Subtype
 ============================   
 This is the code repository for the paper *Neural Population Decoding and Imbalanced Multi-Omic Datasets for Cancer Subtype Diagnosis*.
 
+The code for the Hierarchical Bayesian Network via Spiking Neural Network was forked from the implementation by Otto van der Himst for the paper *Bayesian Integration of Information Using Top-Down Modulated WTA Networks*, available at https://github.com/Grottoh/WTA-Network
 
 ## 1)  `preprocessing.py`
-First, we run this script to merge the omics data from the TCGA dataset into a single CSV file per cancer subtype, named `multi_omic.csv`.    
+First, we run this script to merge the omics data from the TCGA dataset into a single CSV file per cancer subtype, named `multi_omic.csv`. An 
 
     .
     ├── ...                     # Repository root level
@@ -46,11 +47,13 @@ Secondly, we use the multi-omic patient data from `multi_omic.csv` to generate a
     └── ...
 
 
-This implementation was originally forked from [iSOM-GSN](https://github.com/NaziaFatima/iSOM_GSN), although numerous alterations have been made. See Section 3 of the research paper for details.
+This implementation was originally forked from [iSOM-GSN](https://github.com/NaziaFatima/iSOM_GSN), although numerous alterations have been made in order to produce binarized GSN images rather than RGB. See Section 3 of the research paper for details.
 
 
 ## 3)  `run_hierarchical.py`
 
+
+## 4) `population_decoding.py`
 
 [1]: TCGA
 [2]: https://github.com/NaziaFatima/iSOM_GSN
