@@ -37,7 +37,7 @@ def rgba_to_binary(image_path):
 def generate_patient_soms(num_features):
     subtype = "KIRC"
     path = f"./TCGA_data/{subtype}/multi_omic.csv"
-    directory_path = f"patient_som_data/{subtype}"
+    output_path = f"patient_som_data/{subtype}"
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
@@ -153,14 +153,14 @@ def generate_patient_soms(num_features):
 
     # First clear out old files
     input(
-        f"WARNING: Deleteing all files in directory {directory_path}. Press any key to continue.")
+        f"WARNING: Deleteing all files in directory {output_path}. Press any key to continue.")
 
-    files = glob.glob(f"{directory_path}/*")
+    files = glob.glob(f"{output_path}/*")
     for f in files:
         os.remove(f)
 
-    np.save(f"{directory_path}/original.npy", is_original)
-    np.save(f"{directory_path}/target.npy", target_smote)
+    np.save(f"{output_path}/original.npy", is_original)
+    np.save(f"{output_path}/target.npy", target_smote)
 
     var_scaler = StandardScaler()
     data_norm = var_scaler.fit_transform(data_smote)
@@ -192,22 +192,23 @@ def generate_patient_soms(num_features):
                                    node_shape=marker)
         plt.axis('off')
         plt.savefig(
-            f'{directory_path}/patient_{i}.png', bbox_inches='tight', dpi=36)
+            f'{output_path}/patient_{i}.png', bbox_inches='tight', dpi=36)
         # plt.show()
 
     """  Compress .png images into single .npy file """
-    directory = os.listdir(directory_path)
+    directory = os.listdir(output_path)
     output = []
     for file in directory:
         if ".npy" in file:
             continue
-        img = rgba_to_binary(directory_path + "/" + file)
+        img = rgba_to_binary(output_path + "/" + file)
         output.append(img)
 
     image_array_stack = np.stack(output, axis=0)
     print(image_array_stack.shape)
-    np.save(f"{directory_path}/SOM_data", image_array_stack)
+    np.save(f"{output_path}/SOM_data", image_array_stack)
 
 
 if __name__ == "__main__":
+    # Call with number of desired features
     generate_patient_soms(11)
