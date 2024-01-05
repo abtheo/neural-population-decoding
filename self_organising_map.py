@@ -16,6 +16,7 @@ from imblearn.over_sampling import SMOTE
 from collections import Counter
 import xgboost as xgb
 import glob
+import pathlib
 
 
 def rgba_to_binary(image_path):
@@ -35,9 +36,12 @@ def rgba_to_binary(image_path):
 
 
 def generate_patient_soms(num_features):
-    subtype = "KIRC"
+    subtype = "BRCA"
     path = f"./TCGA_data/{subtype}/multi_omic.csv"
     output_path = f"patient_som_data/{subtype}"
+    # create path if not exist
+    pathlib.Path(output_path).mkdir(parents=True, exist_ok=True)
+
     # read multi-omic csv data
     df = pd.read_csv(path)
     # extract the target variable
@@ -210,5 +214,5 @@ def generate_patient_soms(num_features):
 
 
 if __name__ == "__main__":
-    # Call with number of desired features
+    # Call with number of desired top-N features
     generate_patient_soms(11)
