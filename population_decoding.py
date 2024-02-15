@@ -303,22 +303,23 @@ def plot_scatter_bar(df, label, title="", tidy_label=False):
 
 
 subtype = "brca"
+results_path = f"./results/{subtype}"
 master_results = pd.DataFrame()
 neur_counts = []
 smote_datasets = [f"{subtype}_0", f"{subtype}_33",
                   f"{subtype}_66", f"{subtype}_100"]
 for ds in smote_datasets:
     df = pd.read_csv(
-        f"./{ds}smote_results_df.csv", index_col=[0])
+        f"{results_path}/{ds}smote_results_df.csv", index_col=[0])
     df.reset_index(drop=True, inplace=True)
 
     neuron_label_counts = np.load(
-        f"./{ds}smote_neuron_label_counts.npy", allow_pickle=True)
+        f"{results_path}/{ds}smote_neuron_label_counts.npy", allow_pickle=True)
 
     neuron_image_counts = np.load(
-        f"./{ds}smote_neuron_image_counts.npy", allow_pickle=True)
+        f"{results_path}/{ds}smote_neuron_image_counts.npy", allow_pickle=True)
     labels = np.load(
-        f"./{ds}smote_labels.npy", allow_pickle=True)
+        f"{results_path}/{ds}smote_labels.npy", allow_pickle=True)
 
 # datasets = ["logreg", "omic1", "omic2", "omic3"]
 # for ds in datasets:
