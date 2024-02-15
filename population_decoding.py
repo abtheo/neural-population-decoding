@@ -495,7 +495,7 @@ for ds in smote_datasets:
 
 # plot_scatter_bar(master_results, 'Max_Neuron_F1',
 #                  f'Max Neuron Results for Omics', 'F1 Score')
-
+print(master_results)
 plot_scatter_bar(master_results, 'Population_Vector_F1',
                  f'Population Vector', 'F1 Score')  # Population Vector Results for {subtype.upper()}
 

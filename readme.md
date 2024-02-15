@@ -48,7 +48,7 @@ Secondly, we use the multi-omic patient data from `multi_omic.csv` to generate a
 
 ### 3)  `run_hierarchical.py`
 
-Here we run the training and testing loops for the hierarchical bayesian WTA network. The GSN images are converted into spike trains under the folder `data\spikes`. The nework is trained on the training set
+Here we run the training and testing loops for the hierarchical bayesian WTA network. The GSN images are converted into spike trains under the folder `data\spikes`. The nework is trained for a given number of epochs before being evaluated on the test set. The results of the evaluation are saved into an output directory as shown below.
 
     .
     ├── ...                     # Repository root level
@@ -60,18 +60,24 @@ Here we run the training and testing loops for the hierarchical bayesian WTA net
     |          |    └── X_spikes_10.pkl                    
     |          └── ...  
     |
-    ├── results         
+    ├── results     # Output folder created by run_hierarchical.py      
     |       └── BRCA    # Cancer subtypes     
-    |          |    ├── X_spikes_0.pkl    # Results output files
-    |          |    ├── X_spikes_0.pkl    
-    |          |    ├── X_spikes_0.pkl    
-    |          |    └── X_spikes_10.pkl                    
+    |          |    ├── results_df.csv    # Results output files
+    |          |    ├── neuron_label_counts.npy    
+    |          |    ├── neuron_image_counts.npy   
+    |          |    └── smote_labels.npy                    
     |          └── ...                    
     └── ...
 
+After training and evaluating the network, the following results files are created:
+
+* `neuron_label_counts.npy`: A 2D Numpy Array which has shape (Neurons, Classes). This array represents the number of times each neuron was presented with a stimulus of each respective class. Used to assign "prefered labels" to neurons in several population decoding methods.
+* `neuron_image_counts.npy`: A 2D Numpy Array which has shape (Test_samples, Neurons). This array represents the number of times each neuron fired for a given test sample, aka the spike count code. This is the primary output of the network, which we will ultimately use to determine the network's predicted class for the test samples, after population decoding.
+* `smote_labels.py`: Used to keep track of which test samples are synthetically added via SMOTE and which are from the original test set, so that results can be reported correctly.
+* `results_df.csv`: Various statistics about the training and testing procedures.
 
 ## 4) `population_decoding.py`
-
+Uses the results output files detailed above to evaluate the network's predictions against the test set. Numerous different methods of population decoding are present and their performance can be compared against one another. Creates a dataframe of all results to be further inspected, and also has functions to generate graphs of the various population decoding methods.
 
 ## References
 
