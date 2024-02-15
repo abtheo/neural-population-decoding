@@ -214,6 +214,9 @@ def run_hierarchical():
                 network.n_spikes_since_reset_o = np.zeros(
                     network.K_o, dtype=np.uint16)
 
+        # Collect the results of trained network upon the test set
+        # for later decoding in population_decoding.py
+
         results_df = network.evaluate_results(data_handler, neuron_label_counts,
                                               neuron_image_counts, labels_test)
 
@@ -235,12 +238,16 @@ def run_hierarchical():
         n_img_k.append(neuron_image_counts)
         test_labels_k.append(labels_test)
 
-    final_df.to_csv("results_df.csv")
-    np.save("neuron_label_counts.npy",
+    # Save results to output directory
+    results_path = f"./results/{subtype}/"
+    if not os.path.exists(os.path.abspath(results_path)):
+        os.makedirs(results_path)
+    final_df.to_csv(results_path + "results_df.csv")
+    np.save(results_path + "neuron_label_counts.npy",
             np.array(n_labels_k, dtype=object))
-    np.save("neuron_image_counts.npy",
+    np.save(results_path + "neuron_image_counts.npy",
             np.array(n_img_k, dtype=object))
-    np.save("smote_labels.npy",
+    np.save(results_path + "smote_labels.npy",
             np.array(test_labels_k, dtype=object))
 
 
