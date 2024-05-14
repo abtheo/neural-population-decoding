@@ -1,44 +1,63 @@
 
 import pandas as pd
 
-root_path = "./TCGA_data/"
-path_extension = "BRCA/"
-path = root_path + path_extension
+# path = "../brca_tcga_pub2015/"
+path = "../prad_tcga/"
 
+target_label = "AJCC_PATHOLOGIC_TUMOR_STAGE" if 'brca' in path else "GLEASON_SCORE"
 
 df_label = pd.read_csv(
-    path+"label.csv").rename(columns={'Unnamed: 0': 'PATIENT_ID'})
-
+    path+"data_clinical_patient.txt", sep="\t", header=4)[["PATIENT_ID",
+                                                          target_label]]
 """
     Each column represents one patient.
-    Merge the CSVs vertically, 
-    then map to survival + labels via PATIENT_ID
+    Merge the omic feature CSVs vertically, 
+    then map to labels via PATIENT_ID
 """
+
 df_gene = pd.read_csv(
-    path+"data/gene.csv").rename(columns={'Unnamed: 0': 'GENE_ID'})
+    path+"data_linear_cna.txt", sep="\t")
 df_miRNA = pd.read_csv(
-    path+"data/miRNA.csv").rename(columns={'Unnamed: 0': 'miRNA_ID'})
+    path+"data_mrna_seq_v2_rsem.txt", sep="\t")
 df_methyl = pd.read_csv(
-    path+"data/methyl.csv").rename(columns={'Unnamed: 0': 'METHYL_ID'})
+    path+"data_methylation_hm450.txt", sep="\t")
 
-df = pd.concat([df_gene, df_miRNA, df_methyl])
-""" Merge multi-omic IDs into single column """
-df.insert(0, "OMIC_ID", df[["GENE_ID", "miRNA_ID",
-                            "METHYL_ID"]].bfill(axis=1).iloc[:, 0])
-df.drop(labels=["GENE_ID", "miRNA_ID", "METHYL_ID"], axis=1, inplace=True)
+df = pd.concat([df_gene, df_miRNA, df_methyl]).drop(
+    "Entrez_Gene_Id", axis=1).rename(columns={"Hugo_Symbol": "OMIC_ID"})
+df.reset_index()
 
-""" 
+"""
     Each column in df has a header corresponding to the PATIENT_ID,
     and each row is associated with a single omic feature indexed by the OMIC_ID.
 
-    To correlate with the target variable in the column label2 within df_label,
+    To correlate with the target variable within df_label,
     we add a row to the end of the multi_omic csv.
 """
-# prepend with label for the OMIC_ID column (will be dropped later anyway)
-try:
-    target = pd.concat([pd.Series('Target'), df_label['label2']])
-except:
-    target = pd.concat([pd.Series('Target'), df_label['class2']])
+target = pd.concat(
+    [pd.Series('Target'), df_label[target_label]])
+
+if 'brca' not in path:
+    target = target[:-1]
+
+print("Labels inside Patient_ID.txt but not in features:\n")
+for v in df_label["PATIENT_ID"]:
+    anymatch = False
+    for d in df.columns:
+        if v in d:
+            anymatch = True
+    if not anymatch:
+        print(v)
+
+print("Labels inside features but not in Patient_ID.txt:\n")
+
+for v in df.columns:
+    anymatch = False
+    v = v[:-3]
+    for d in df_label["PATIENT_ID"]:
+        if v in d:
+            anymatch = True
+    if not anymatch:
+        print(v)
 
 df = df.append(pd.Series(target.values, index=df.columns),
                ignore_index=True)
