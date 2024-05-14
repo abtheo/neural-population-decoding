@@ -1,14 +1,16 @@
 
 import pandas as pd
 
-# path = "../brca_tcga_pub2015/"
-path = "../prad_tcga/"
+path = "../brca_tcga_pub2015/"
+# path = "../prad_tcga/"
 
-target_label = "AJCC_PATHOLOGIC_TUMOR_STAGE" if 'brca' in path else "GLEASON_SCORE"
+target_label = ["AJCC_PATHOLOGIC_TUMOR_STAGE"] if 'brca' in path else [
+    "GLEASON_PATTERN_PRIMARY", "GLEASON_PATTERN_SECONDARY"]
+
+t_select = ["PATIENT_ID"] + target_label
 
 df_label = pd.read_csv(
-    path+"data_clinical_patient.txt", sep="\t", header=4)[["PATIENT_ID",
-                                                          target_label]]
+    path+"data_clinical_patient.txt", sep="\t", header=4)[t_select]
 """
     Each column represents one patient.
     Merge the omic feature CSVs vertically, 
@@ -33,34 +35,37 @@ df.reset_index()
     To correlate with the target variable within df_label,
     we add a row to the end of the multi_omic csv.
 """
-target = pd.concat(
-    [pd.Series('Target'), df_label[target_label]])
 
-if 'brca' not in path:
-    target = target[:-1]
+# Explicitly match targets to labels
+targets = ['Target']
+matched_ids = ['OMIC_ID']
+for patient_id in df.columns[1:]:
+    patient = df_label[df_label["PATIENT_ID"] == patient_id[:-3]]
 
-print("Labels inside Patient_ID.txt but not in features:\n")
-for v in df_label["PATIENT_ID"]:
-    anymatch = False
-    for d in df.columns:
-        if v in d:
-            anymatch = True
-    if not anymatch:
-        print(v)
+    # Arrange into Gleason score groups for PRCA
+    if not 'brca' in path:
+        patient_gleason_scores = patient[target_label].values[0]
+        gleason_group = "NA"
+        if all(patient_gleason_scores == [3, 4]):
+            gleason_group = "34"
 
-print("Labels inside features but not in Patient_ID.txt:\n")
+        if all(patient_gleason_scores == [4, 3]):
+            gleason_group = "43"
 
-for v in df.columns:
-    anymatch = False
-    v = v[:-3]
-    for d in df_label["PATIENT_ID"]:
-        if v in d:
-            anymatch = True
-    if not anymatch:
-        print(v)
+        if all(patient_gleason_scores == [4, 5]) or all(patient_gleason_scores == [5, 4]):
+            gleason_group = "9"
 
-df = df.append(pd.Series(target.values, index=df.columns),
-               ignore_index=True)
+        if gleason_group != "NA":
+            targets += [gleason_group]
+            matched_ids += [patient_id]
+    # Get tumor stage for BRCA
+    else:
+        targets.append(patient[target_label].values[0][0])
+        matched_ids += [patient_id]
+
+
+df = df[matched_ids].append(pd.Series(targets, index=matched_ids),
+                            ignore_index=True)
 
 print(df)
 df.to_csv(path + "multi_omic.csv", index=False)
